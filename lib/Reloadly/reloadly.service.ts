@@ -1,4 +1,4 @@
-import { PrismaService } from 'prisma'
+import { PrismaService } from 'prisma/prisma.service'
 import axios, { AxiosInstance, AxiosResponse } from 'axios'
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common'
 

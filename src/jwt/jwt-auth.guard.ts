@@ -1,4 +1,4 @@
-import { PrismaService } from 'prisma'
+import { PrismaService } from 'prisma/prisma.service'
 import { JwtService } from '@nestjs/jwt'
 import { Reflector } from '@nestjs/core'
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common'

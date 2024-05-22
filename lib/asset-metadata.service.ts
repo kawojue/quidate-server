@@ -1,7 +1,6 @@
 import axios from 'axios'
-import { PrismaService } from 'prisma'
 import { StatusCodes } from 'enums/StatusCodes'
-import { Cron, CronExpression } from '@nestjs/schedule'
+import { PrismaService } from 'prisma/prisma.service'
 import { HttpException, Injectable } from '@nestjs/common'
 
 @Injectable()
@@ -164,7 +163,6 @@ export class AssetMetadataService {
         }
     }
 
-    @Cron(CronExpression.EVERY_30_MINUTES)
     async fetchAndStoreP2PPriceConversion(): Promise<void> {
         try {
             await this.fetchPrice()

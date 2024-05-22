@@ -7,10 +7,10 @@ import { RolesGuard } from 'src/jwt/jwt-auth.guard'
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
 import { Controller, Get, Post, Param, UseGuards, Req, Res } from '@nestjs/common'
 
-@ApiTags("Wallets")
 @SkipThrottle()
-@Controller('wallets')
 @ApiBearerAuth()
+@ApiTags("Wallet")
+@Controller('wallet')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 export class WalletController {
   constructor(private readonly walletService: WalletService) { }

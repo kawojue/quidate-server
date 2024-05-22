@@ -1,5 +1,5 @@
 import { Response } from 'express'
-import { PrismaService } from 'prisma'
+import { PrismaService } from 'prisma/prisma.service'
 import { Injectable } from '@nestjs/common'
 import { MiscService } from 'lib/misc.service'
 import { StatusCodes } from 'enums/StatusCodes'
@@ -14,11 +14,10 @@ export class WalletService {
   constructor(
     private readonly misc: MiscService,
     private readonly prisma: PrismaService,
-    private readonly paystack: PaystackService,
     private readonly response: ResponseService,
-    readonly bitPowerSdkService: BitPowrSdkService,
+    private readonly paystack: PaystackService,
   ) {
-    this.bitPowerSdk = bitPowerSdkService.getSdk()
+    this.bitPowerSdk = new BitPowrSdkService().getSdk()
   }
 
   async createAndAssignAddresses(res: Response, { sub: userId }: ExpressUser) {

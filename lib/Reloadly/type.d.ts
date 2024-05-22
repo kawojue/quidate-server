@@ -1,3 +1,10 @@
+interface GenerateNewReloadlyTokenResponse {
+    scope: string
+    token_type: string
+    expires_in: number
+    access_token: string
+}
+
 interface GiftCardCountryInfo {
     isoName: string
     name: string

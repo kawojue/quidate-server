@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger'
-import { IsOptional, IsString } from 'class-validator'
+import { IsNotEmpty, IsOptional, IsString } from 'class-validator'
 
 export class SearchDto {
     @ApiProperty({
@@ -28,4 +28,18 @@ export class FetchProductsDto extends InfiniteScrollDto {
     @IsString()
     @IsOptional()
     isoName: string
+}
+
+export class FXRateDTO {
+    @ApiProperty({
+        examples: ['USD', 'NGN']
+    })
+    @IsNotEmpty()
+    currencyCode: string
+
+    @ApiProperty({
+        example: 20
+    })
+    @IsNotEmpty()
+    amount: number
 }

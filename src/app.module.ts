@@ -1,16 +1,23 @@
-import { PrismaService } from 'prisma'
 import { JwtService } from '@nestjs/jwt'
 import { APP_GUARD } from '@nestjs/core'
 import { AppService } from './app.service'
 import { ConfigModule } from '@nestjs/config'
+import { MiscService } from 'lib/misc.service'
+import { TaskService } from 'lib/task.service'
+import { AuthModule } from './auth/auth.module'
 import { PlunkService } from 'lib/plunk.service'
+import { WhoisService } from 'lib/whois.service'
 import { AppController } from './app.controller'
 import { ScheduleModule } from '@nestjs/schedule'
+import { PrismaService } from 'prisma/prisma.service'
 import { WalletModule } from './wallet/wallet.module'
 import { ResponseService } from 'lib/response.service'
+import { ThreatIntelService } from 'lib/threat.service'
 import { EncryptionService } from 'lib/encryption.service'
 import { GiftCardModule } from './gift-card/gift-card.module'
+import { PriceConversionService } from 'lib/price-conversion'
 import cloudinaryConfig from './cloudinary/cloudinary.config'
+import { CloudinaryModule } from './cloudinary/cloudinary.module'
 import { AssetMetadataService } from 'lib/asset-metadata.service'
 import { LoggerMiddleware } from './middlewares/logger.middleware'
 import { CloudinaryService } from './cloudinary/cloudinary.service'
@@ -30,19 +37,27 @@ import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/c
       }
     ]),
     ScheduleModule.forRoot(),
+    AuthModule,
     WalletModule,
     GiftCardModule,
+    CloudinaryModule
   ],
+  exports: [PrismaService, EncryptionService],
   controllers: [AppController],
   providers: [
     AppService,
     JwtService,
+    MiscService,
+    TaskService,
     PlunkService,
+    WhoisService,
     PrismaService,
     ResponseService,
     CloudinaryService,
     EncryptionService,
+    ThreatIntelService,
     AssetMetadataService,
+    PriceConversionService,
     {
       useClass: ThrottlerGuard,
       provide: APP_GUARD,

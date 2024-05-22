@@ -26,7 +26,7 @@ async function bootstrap() {
   expressApp.set('trust proxy', true)
   app.use(express.json({ limit: 10 << 20 }))
 
-  app.setGlobalPrefix('/api/v1')
+  app.setGlobalPrefix('/api/v2')
   app.useGlobalPipes(new ValidationPipe())
 
   const swaggerOptions = new DocumentBuilder()

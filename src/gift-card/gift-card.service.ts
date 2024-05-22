@@ -1,13 +1,13 @@
 import { Response } from 'express'
-import { PrismaService } from 'prisma'
+import { PrismaService } from 'prisma/prisma.service'
 import { Injectable } from '@nestjs/common'
 import { StatusCodes } from 'enums/StatusCodes'
 import { PlunkService } from 'lib/plunk.service'
-import {
-    FetchProductsDto, InfiniteScrollDto, SearchDto
-} from './dto/gift-card.dto'
 import { ResponseService } from 'lib/response.service'
 import { Consumer } from 'lib/Reloadly/reloadly.service'
+import {
+    FetchProductsDto, FXRateDTO, InfiniteScrollDto, SearchDto
+} from './dto/gift-card.dto'
 
 @Injectable()
 export class GiftCardService {
@@ -27,27 +27,32 @@ export class GiftCardService {
 
     async fetchProducts(
         res: Response,
-        { search = '', page = 1, limit = 100, isoName = '' }: FetchProductsDto
+        {
+            search = '', page = 1,
+            limit = 100, isoName = ''
+        }: FetchProductsDto
     ) {
-        let { content: products } = await this.consumer.sendRequest<GiftCardProducts>('GET', `products?size=${limit}&page=${page}&countryCode=${isoName}`)
+        try {
+            const { content: products } = await this.consumer.sendRequest<GiftCardProducts>('GET', `products?size=${limit}&page=${page}&countryCode=${isoName}`)
 
-        if (search.trim()) {
-            products = products.filter((product) => {
-                if (
-                    search
-                        .toLowerCase()
-                        .includes(product.country.name.toLowerCase()) ||
-                    search
-                        .toLowerCase()
-                        .includes(product.brand.brandName.toLowerCase())
-                ) {
-                    return product
-                }
+            const filteredProducts = search.trim() ? products.filter((product) => {
+                const searchTerm = search.toLowerCase()
+                return (
+                    product.productName.toLowerCase().includes(searchTerm) ||
+                    product.country.name.toLowerCase().includes(searchTerm) ||
+                    product.brand.brandName.toLowerCase().includes(searchTerm)
+                )
+            }) : products
+
+            this.response.sendSuccess(res, StatusCodes.OK, {
+                data: { products: filteredProducts, total: filteredProducts.length }
             })
+        } catch (error) {
+            console.error('Error fetching products:', error)
+            this.response.sendError(res, StatusCodes.InternalServerError, 'Failed to fetch products')
         }
-
-        this.response.sendSuccess(res, StatusCodes.OK, { data: { products, total: products.length } })
     }
+
 
     async fetchProductById(res: Response, productId: string) {
         const product = await this.consumer.sendRequest<GiftCardProduct>('GET', `products/${productId}`)
@@ -101,8 +106,8 @@ export class GiftCardService {
         this.response.sendSuccess(res, StatusCodes.OK, { data: discountProduct })
     }
 
-    async fxRate(res: Response) {
-        const rate = await this.consumer.sendRequest('GET', 'fx-rate?currencyCode=USD&amount=1')
+    async fxRate(res: Response, { currencyCode, amount }: FXRateDTO) {
+        const rate = await this.consumer.sendRequest('GET', `fx-rate?currencyCode=${currencyCode}&amount=${amount}`)
 
         this.response.sendSuccess(res, StatusCodes.OK, { data: rate })
     }

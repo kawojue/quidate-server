@@ -1,17 +1,28 @@
-import { PrismaService } from 'prisma'
 import { UAParser } from 'ua-parser-js'
 import { JwtService } from '@nestjs/jwt'
+import { WhoisService } from 'lib/whois.service'
 import { formatSize } from 'helpers/transformer'
 import { getIpAddress } from 'helpers/getIpAddress'
+import { PrismaService } from 'prisma/prisma.service'
+import { RateLimiterMemory } from 'rate-limiter-flexible'
 import { NextFunction, Request, Response } from 'express'
-import { Injectable, NestMiddleware } from '@nestjs/common'
+import { HttpException, Injectable, NestMiddleware } from '@nestjs/common'
 
 @Injectable()
 export class LoggerMiddleware implements NestMiddleware {
-    constructor(
-        private readonly prisma: PrismaService,
-        private readonly jwtService: JwtService,
-    ) { }
+    private whois: WhoisService
+    private prisma: PrismaService
+    private jwtService: JwtService
+    private rateLimiter = new RateLimiterMemory({
+        points: 20,
+        duration: 60,
+    })
+
+    constructor() {
+        this.whois = new WhoisService()
+        this.prisma = new PrismaService()
+        this.jwtService = new JwtService()
+    }
 
     async validateAndDecodeToken(token: string) {
         try {
@@ -31,8 +42,47 @@ export class LoggerMiddleware implements NestMiddleware {
         const originalUrl = req.originalUrl
         const splitOriginalUrl = originalUrl?.split("?")
         const endpoint = splitOriginalUrl[0]
-        const query = splitOriginalUrl.length > 1 ? splitOriginalUrl[1] : undefined
         const url = `${req.protocol}://${req.headers.host}${originalUrl}`
+        const query = splitOriginalUrl.length > 1 ? splitOriginalUrl[1] : undefined
+
+        try {
+            await this.rateLimiter.consume(remoteAddr);
+        } catch (err) {
+            console.error(err)
+            throw new HttpException('Too Many Requests', 429);
+        }
+
+        const blacklisted = await this.prisma.blacklistedIP.findUnique({
+            where: { ip: remoteAddr }
+        })
+
+        if (blacklisted) {
+            throw new HttpException("Your IP has been blacklisted", 403)
+        }
+
+        if (endpoint === "/api/v2/auth/signup") {
+            const ALLOWED_COUNTRIES = ['Nigeria']
+            const email = req.body?.email?.trim().toLowerCase()
+
+            if (email) {
+                const data = await this.whois.getInfo(req)
+
+                if (!ALLOWED_COUNTRIES.includes(data.country)) {
+                    throw new HttpException("Your Country is not allowed", 403)
+                }
+
+                const user = await this.prisma.user.findUnique({
+                    where: { email }
+                })
+
+                if (!user) {
+
+                }
+
+                console.log(data)
+            }
+            // Moving to auth
+        }
 
         const log = {
             query,

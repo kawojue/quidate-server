@@ -1,5 +1,6 @@
 import { Response } from 'express'
 import { JwtService } from '@nestjs/jwt'
+import { USER_REGEX } from 'utils/regExp'
 import { Injectable } from '@nestjs/common'
 import { StatusCodes } from 'enums/statusCodes'
 import { TransactionCurrency } from '@prisma/client'
@@ -8,16 +9,22 @@ import { PriceConversionService } from './price-conversion'
 
 @Injectable()
 export class MiscService {
+    private jwtService: JwtService
     private response: ResponseService
     private priceConversion: PriceConversionService
 
-    constructor(private readonly jwtService: JwtService) {
+    constructor() {
+        this.jwtService = new JwtService()
         this.response = new ResponseService()
         this.priceConversion = new PriceConversionService()
     }
 
     async generateNewAccessToken({ sub, role, userStatus }: JwtPayload) {
         return await this.jwtService.signAsync({ sub, role, userStatus })
+    }
+
+    validateUsername(username: string) {
+        return USER_REGEX.test(username)
     }
 
     handleServerError(res: Response, err?: any, msg?: string) {

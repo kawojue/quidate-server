@@ -2,10 +2,12 @@ import { Response } from 'express'
 import { Injectable } from '@nestjs/common'
 import { MiscService } from 'lib/misc.service'
 import { StatusCodes } from 'enums/StatusCodes'
+import { toUpperCase } from 'helpers/transformer'
 import { PrismaService } from 'prisma/prisma.service'
 import { ResponseService } from 'lib/response.service'
 import { BitPowrSdkService } from 'lib/bitPowr.service'
 import { PaystackService } from 'lib/Paystack/paystack.service'
+import { BankDetailsDTO, ValidateBankDTO } from './dto/bank.dto'
 
 @Injectable()
 export class WalletService {
@@ -20,29 +22,174 @@ export class WalletService {
     this.bitPowerSdk = new BitPowrSdkService().getSdk()
   }
 
-  async createAndAssignAddresses(res: Response, { sub: userId }: ExpressUser) {
+  async bankAccountVerification(res: Response, { account_number, bank_code }: ValidateBankDTO) {
+    const { data } = await this.paystack.resolveAccount(account_number, bank_code)
+
+    this.response.sendSuccess(res, StatusCodes.OK, { data })
+  }
+
+  async fetchBanks(res: Response) {
+    const { data: banks } = await this.paystack.listBanks()
+
+    this.response.sendSuccess(res, StatusCodes.OK, { data: banks })
+  }
+
+  async fetchBankByBankCode(res: Response, bankCode: string) {
+    const bank = await this.paystack.getBankByBankCode(bankCode)
+
+    if (!bank) {
+      this.response.sendError(res, StatusCodes.NotFound, "No supported Bank Name is associated with this bank code.")
+      return
+    }
+
+    this.response.sendSuccess(res, StatusCodes.OK, { data: bank })
+  }
+
+  async linkBankAccount(
+    res: Response,
+    { sub }: ExpressUser,
+    { accountNumber, bankCode }: BankDetailsDTO
+  ) {
     try {
-      const user = await this.prisma.user.findUnique({
-        where: {
-          id: userId
-        },
-        select: {
-          virtualAccount: true,
-          walletAddresses: true
-        }
+      const linkedAccounts = await this.prisma.linkedBank.findMany({
+        where: { userId: sub },
+        orderBy: { createdAt: 'desc' },
       })
 
-      if (!user || !user.virtualAccount) {
-        this.response.sendError(res, StatusCodes.NotFound, "Create a Virtual Account before assigning addresses")
-        return
+      const totalLinked = linkedAccounts.length
+      let canLinkNewAccount = true
+      let replaceAccountId = null
+
+      if (totalLinked === 2) {
+        const lastLinkedBankAccount = linkedAccounts[0]
+
+        const now = new Date().getTime()
+        const lastLinkedDate = new Date(lastLinkedBankAccount.createdAt).getTime()
+        const diffTime = Math.abs(now - lastLinkedDate)
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+        if (lastLinkedBankAccount.primary) {
+          canLinkNewAccount = true
+        } else if (diffDays < 90) {
+          canLinkNewAccount = false
+          return this.response.sendError(res, StatusCodes.BadRequest, "You cannot link a new bank account until 90 days have passed since the last account was linked.")
+        } else {
+          replaceAccountId = lastLinkedBankAccount.id
+        }
       }
 
-      if (user.walletAddresses.length) {
-        this.response.sendError(res, StatusCodes.Conflict, "You have existing wallet addresses")
-        return
+      if (canLinkNewAccount) {
+        const bank = await this.paystack.getBankByBankCode(bankCode)
+        const { data: details } = await this.paystack.resolveAccount(accountNumber, bankCode)
+
+        if (totalLinked === 0) {
+          const user = await this.prisma.user.findUnique({
+            where: { id: sub },
+            select: { id: true, fullName: true },
+          })
+
+          let matchingNamesCount = 0
+
+          const full_names = toUpperCase(user.fullName).split(/[\s,]+/).filter(Boolean)
+          const account_names = toUpperCase(details.account_name).split(/[\s,]+/).filter(Boolean)
+
+          for (const account_name of account_names) {
+            if (full_names.includes(account_name)) {
+              matchingNamesCount += 1
+            }
+          }
+
+          if (matchingNamesCount < 2) {
+            return this.response.sendError(res, StatusCodes.BadRequest, "Account names do not match.")
+          }
+        }
+
+        const data = replaceAccountId
+          ? await this.prisma.linkedBank.update({
+            where: { id: replaceAccountId },
+            data: {
+              bankCode,
+              accountNumber,
+              bankName: bank.name,
+              primary: totalLinked === 0,
+              accountName: details.account_name,
+            },
+          })
+          : await this.prisma.linkedBank.create({
+            data: {
+              bankCode,
+              accountNumber,
+              bankName: bank.name,
+              primary: totalLinked === 0,
+              accountName: details.account_name,
+              user: { connect: { id: sub } },
+            },
+          })
+
+        this.response.sendSuccess(res, StatusCodes.Created, {
+          data,
+          message: replaceAccountId ? "Your bank account has been updated." : "Your bank account has been linked.",
+        })
+      }
+    } catch (err) {
+      this.misc.handlePaystackAndServerError(res, err)
+    }
+  }
+
+  async linkedBanks(res: Response, { sub }: ExpressUser) {
+    const banks = await this.prisma.linkedBank.findMany({
+      where: { userId: sub },
+      orderBy: [
+        { primary: 'desc' },
+        { createdAt: 'desc' }
+      ]
+    })
+
+    this.response.sendSuccess(res, StatusCodes.OK, { data: banks })
+  }
+
+  async getLinkedBank(
+    id: string,
+    res: Response,
+    { sub: userId }: ExpressUser,
+  ) {
+    const bank = await this.prisma.linkedBank.findUnique({
+      where: { id, userId }
+    })
+
+    if (!bank) {
+      return this.response.sendError(res, StatusCodes.NotFound, "Linked bank account not found")
+    }
+
+    this.response.sendSuccess(res, StatusCodes.OK, { data: bank })
+  }
+
+  async assignAddresses(res: Response, { sub: userId }: ExpressUser) {
+    try {
+      const walletAddressesCount = await this.prisma.walletAddress.count({
+        where: { userId }
+      })
+
+      const linkedBanksCount = await this.prisma.linkedBank.count({
+        where: { userId }
+      })
+
+      if (linkedBanksCount > 0) {
+        return this.response.sendError(res, StatusCodes.NotFound, "Create a Virtual Account before assigning addresses")
       }
 
-      let createdAddresses = []
+      if (walletAddressesCount > 0) {
+        return this.response.sendError(res, StatusCodes.Conflict, "You have existing wallet addresses")
+      }
+
+      let createdAddresses: {
+        mode: string
+        chain: string
+        address: string
+        network: string
+        assetType: string
+        addressType: string
+      }[] = []
 
       const walletAccount = await this.prisma.walletAccount.findFirst({
         where: {
@@ -91,11 +238,7 @@ export class WalletService {
             addressContractIdentifier: address.addressContractIdentifier,
             deploymentParams: address.deploymentParams,
             lastUsedAt: address.lastUsedAt,
-            user: {
-              connect: {
-                id: userId
-              }
-            }
+            user: { connect: { id: userId } }
           }
         })
         createdAddresses.push(createdAddressesData)

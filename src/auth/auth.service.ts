@@ -1,3 +1,4 @@
+import { BVNDTO } from './dto/bvn.dto'
 import { Request, Response } from 'express'
 import { Injectable } from '@nestjs/common'
 import { PinDto } from './dto/pin-auth.dto'
@@ -18,7 +19,6 @@ import { CreateAuthDto, UsernameDto } from './dto/create-auth.dto'
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service'
 import { titleText, toLowerCase, toUpperCase } from 'helpers/transformer'
 import { UpdatePasswordDto, ResetPasswordDto } from './dto/password-auth.dto'
-import { BVNDTO } from './dto/bvn.dto'
 
 @Injectable()
 export class AuthService {
@@ -171,7 +171,6 @@ export class AuthService {
 
   async login(
     res: Response,
-    req: Request,
     { email, password }: LoginAuthDto
   ) {
     try {
@@ -179,11 +178,7 @@ export class AuthService {
         where: {
           email: email.toLowerCase().trim()
         },
-        include: {
-          profile: true,
-          virtualAccount: true,
-          walletAddresses: true,
-        }
+        include: { profile: true }
       })
 
       if (!user) {
@@ -194,6 +189,15 @@ export class AuthService {
       if (!verifyPassword) {
         return this.response.sendError(res, StatusCodes.Unauthorized, "Incorrect Password")
       }
+
+      const [linkedBanksCount, walletAddressesCount] = await this.prisma.$transaction([
+        this.prisma.linkedBank.count({
+          where: { userId: user.id }
+        }),
+        this.prisma.linkedBank.count({
+          where: { userId: user.id }
+        })
+      ])
 
       this.response.sendSuccess(res, StatusCodes.OK, {
         access_token: await this.misc.generateNewAccessToken({
@@ -207,12 +211,12 @@ export class AuthService {
           email: user.email,
           username: user.username,
           fullname: user.fullName,
-          primaryAsset: user.profile.primaryAsset,
+          hasLinkedAccount: linkedBanksCount > 0,
           isPinCreated: user.profile.pin !== null,
+          primaryAsset: user.profile.primaryAsset,
           email_verified: user.profile.email_verified,
+          hasAssignedAddresses: walletAddressesCount > 0,
           avatar: user.profile.avatar?.secure_url ?? null,
-          isCreatedVirtualAccount: user.virtualAccount !== null,
-          isAssignedAddresses: user.walletAddresses.length !== 0,
         },
         message: "Login Successful",
       })
@@ -227,25 +231,39 @@ export class AuthService {
       const userId = decodedToken.sub
 
       const user = await this.prisma.user.findUnique({
-        where: {
-          id: userId
-        },
-        include: {
-          profile: true,
-          virtualAccount: true,
-          walletAddresses: true,
-        }
+        where: { id: userId },
+        include: { profile: true }
       })
 
       if (!user) {
-        this.response.sendError(res, StatusCodes.NotFound, 'Something went wrong')
-        return
+        return this.response.sendError(res, StatusCodes.NotFound, 'Account not found')
       }
+
+      const lastPasswordChanged = new Date(user.lastPasswordChanged)
+      const lastUsedBiometric = user.lastUsedBiometric ? new Date(user.lastUsedBiometric) : null
+
+      if (!lastUsedBiometric || lastPasswordChanged > lastUsedBiometric) {
+        return this.response.sendError(res, StatusCodes.Unauthorized, 'Please log in with your credentials due to recent password change.')
+      }
+
+      const [linkedBanksCount, walletAddressesCount] = await this.prisma.$transaction([
+        this.prisma.linkedBank.count({
+          where: { userId: user.id }
+        }),
+        this.prisma.walletAddress.count({
+          where: { userId: user.id }
+        })
+      ])
 
       const access_token = await this.misc.generateNewAccessToken({
         sub: user.id,
         role: user.role,
         userStatus: user.userStatus
+      })
+
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { lastUsedBiometric: new Date() }
       })
 
       this.response.sendSuccess(res, StatusCodes.OK, {
@@ -255,12 +273,12 @@ export class AuthService {
           email: user.email,
           username: user.username,
           fullname: user.fullName,
-          primaryAsset: user.profile.primaryAsset,
+          hasLinkedAccount: linkedBanksCount > 0,
           isPinCreated: user.profile.pin !== null,
+          primaryAsset: user.profile.primaryAsset,
           email_verified: user.profile.email_verified,
-          avatar: user.profile.avatar?.secure_url || null,
-          isCreatedVirtualAccount: user.virtualAccount !== null,
-          isAssignedAddresses: user.walletAddresses.length !== 0,
+          hasAssignedAddresses: walletAddressesCount > 0,
+          avatar: user.profile.avatar?.secure_url ?? null,
         },
         message: "Login Successful",
       })
@@ -519,7 +537,6 @@ export class AuthService {
         })
       ])
 
-
       this.response.sendSuccess(res, StatusCodes.OK, {
         message: "Password reset was successful"
       })
@@ -687,32 +704,30 @@ export class AuthService {
         data: { username }
       })
 
-      const localRecipients = await this.prisma.localRecipient.findMany({
-        where: { username: user.username }
-      })
-
-      if (localRecipients.length > 0) {
-        await this.prisma.localRecipient.updateMany({
-          where: { username: user.username },
-          data: { username }
+      res.on('finish', async () => {
+        const recipients = await this.prisma.recipient.findMany({
+          where: { username: user.username }
         })
-      }
 
-      await this.prisma.notification.create({
-        data: {
-          title: 'Username Update',
-          description: `Your username will be updated across the app.`,
-          user: {
-            connect: {
-              id: userId
-            }
-          }
+        if (recipients.length > 0) {
+          await this.prisma.recipient.updateMany({
+            where: { username: user.username },
+            data: { username }
+          })
         }
+
+        await this.prisma.notification.create({
+          data: {
+            title: 'Username Update',
+            description: `Your username has been updated across the app.`,
+            user: { connect: { id: userId } }
+          }
+        })
       })
 
       this.response.sendSuccess(res, StatusCodes.OK, {
         data: { username },
-        message: "Username has been updated successfully"
+        message: "Your username will be updated across the app"
       })
     } catch (err) {
       this.misc.handleServerError(res, err, "Error updating username.")
@@ -840,8 +855,8 @@ export class AuthService {
         return this.response.sendError(res, StatusCodes.Forbidden, "Invalid BVN provided")
       }
 
-      const full_name: string[] = toUpperCase(user.fullName).split(' ')
-      const bvn_fullName: string[] = toUpperCase(data.full_name).split(' ')
+      const full_name: string[] = toUpperCase(user.fullName).split(/[\s,]+/).filter(Boolean)
+      const bvn_fullName: string[] = toUpperCase(data.full_name).split(/[\s,]+/).filter(Boolean)
 
       for (const bvn_name of bvn_fullName) {
         if (full_name.includes(bvn_name)) {
@@ -885,13 +900,9 @@ export class AuthService {
         include: {
           logs: true,
           totp: true,
+          wallet: true,
           recipients: true,
           notifications: true,
-          virtualAccount: {
-            include: {
-              recipients: true,
-            },
-          },
           walletAddresses: true,
           transactionHistories: true,
         },
@@ -904,22 +915,19 @@ export class AuthService {
         ...user.notifications.map((notification) =>
           this.prisma.notification.delete({ where: { id: notification.id } })
         ),
-        ...(user.virtualAccount
+        ...(user.wallet
           ? [
-            this.prisma.virtualAccount.update({
+            this.prisma.wallet.update({
               where: { userId: '65dca231010a3b89f2fe97dc' },
               data: {
-                usdBalance: { increment: user.virtualAccount.usdBalance },
-                ngnBalance: { increment: user.virtualAccount.ngnBalance },
+                usdBalance: { increment: user.wallet.usdBalance },
+                ngnBalance: { increment: user.wallet.ngnBalance },
               },
             }),
-            ...user.virtualAccount.recipients.map((recipient) =>
+            ...user.recipients.map((recipient) =>
               this.prisma.recipient.delete({ where: { id: recipient.id } })
             ),
-            ...user.recipients.map((localRecipient) =>
-              this.prisma.localRecipient.delete({ where: { id: localRecipient.id } })
-            ),
-            this.prisma.virtualAccount.delete({ where: { userId: id } }),
+            this.prisma.wallet.delete({ where: { userId: id } }),
           ]
           : []),
         ...user.logs.map((log) => this.prisma.log.delete({ where: { id: log.id } })),

@@ -25,13 +25,12 @@ model User {
     totp                  Totp?
     wallet                Wallet?
     profile               Profile?
-    virtualAccount        VirtualAccount?
     logs                  Log[]
     invoices              Invoice[]
+    recipients            Recipient[]
     banks                 LinkedBank[]
     notifications         Notification[]
     walletAddresses       WalletAddress[]
-    recipients            LocalRecipient[]
     transactionHistories  TransactionHistory[]
     level                 Level                @relation(fields: [levelId], references: [id])
     levelId               String               @db.ObjectId
@@ -225,56 +224,25 @@ model LinkedBank {
     userId        String   @unique @db.ObjectId
 }
 
-model VirtualAccount {
-    id             String              @id @default(auto()) @map("_id") @db.ObjectId
-    ngnBalance     Float               @default(0.00)
-    usdBalance     Float               @default(0.00)
-    bank_name      String
-    account_id     Int
-    account_number String
-    account_name   String
-    bank_id        Int
-    currency       TransactionCurrency @default(NGN)
-    assigned       Boolean?            @default(true)
-    customer_id    Int                 @unique
-    customer_code  String              @unique
-    assigned_at    DateTime
-    assignee_id    Int
-    assignee_type  String              @default("Customer")
-    createdAt      DateTime
-    recipients     Recipient[]
-    active         Boolean             @default(true)
-    user           User                @relation(fields: [userId], references: [id])
-    userId         String              @unique @db.ObjectId
-}
-
 model Recipient {
     id                 String              @id @default(auto()) @map("_id") @db.ObjectId
     createdAt          DateTime
     currency           TransactionCurrency
-    domain             String
-    recipient_id       Int
-    recipient_code     String              @unique
-    integration        Int
+    domain             String?
+    recipient_id       Int?
+    recipient_code     String?             @unique
+    integration        Int?
     type               String?             @default("nuban")
-    bank_code          String
-    bank_name          String
-    account_name       String
-    account_number     String
+    bank_code          String?
+    bank_name          String?
+    account_name       String?
+    account_number     String?
     authorization_code String?
+    fullname           String?
+    username           String?
+    user               User                @relation(fields: [userId], references: [id])
+    userId             String              @unique @db.ObjectId
     updatedAt          DateTime
-    virtualAccount     VirtualAccount      @relation(fields: [virtualAccountId], references: [id])
-    virtualAccountId   String              @unique @db.ObjectId
-}
-
-model LocalRecipient {
-    id        String   @id @default(auto()) @map("_id") @db.ObjectId
-    createdAt DateTime
-    fullname  String
-    username  String
-    updatedAt DateTime
-    user      User     @relation(fields: [userId], references: [id])
-    userId    String   @unique @db.ObjectId
 }
 
 model Prices {

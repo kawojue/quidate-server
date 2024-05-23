@@ -1,8 +1,8 @@
 import { Response } from 'express'
-import { PrismaService } from 'prisma/prisma.service'
 import { Injectable } from '@nestjs/common'
 import { StatusCodes } from 'enums/StatusCodes'
 import { PlunkService } from 'lib/plunk.service'
+import { PrismaService } from 'prisma/prisma.service'
 import { ResponseService } from 'lib/response.service'
 import { Consumer } from 'lib/Reloadly/reloadly.service'
 import {

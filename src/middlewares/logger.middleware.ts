@@ -43,10 +43,10 @@ export class LoggerMiddleware implements NestMiddleware {
         const query = splitOriginalUrl.length > 1 ? splitOriginalUrl[1] : undefined
 
         try {
-            await this.rateLimiter.consume(remoteAddr);
+            await this.rateLimiter.consume(remoteAddr)
         } catch (err) {
             console.error(err)
-            throw new HttpException('Too Many Requests', 429);
+            throw new HttpException('Too Many Requests', 429)
         }
 
         const blacklisted = await this.prisma.blacklistedIP.findUnique({

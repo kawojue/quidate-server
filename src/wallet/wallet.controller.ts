@@ -1,8 +1,10 @@
 import { Response } from 'express'
 import { Roles } from 'src/role.decorator'
 import { AuthGuard } from '@nestjs/passport'
+import { Roles as Role } from '@prisma/client'
 import { WalletService } from './wallet.service'
 import { SkipThrottle } from '@nestjs/throttler'
+import { FundWalletDTO } from './dto/deposit.dto'
 import { RolesGuard } from 'src/jwt/jwt-auth.guard'
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
 import { BankDetailsDTO, ValidateBankDTO } from './dto/bank.dto'
@@ -19,26 +21,31 @@ export class WalletController {
   constructor(private readonly walletService: WalletService) { }
 
   @Get('/verify/bank-details')
+  @Roles(Role.user)
   async bankAccountVerification(@Res() res: Response, @Query() query: ValidateBankDTO) {
     await this.walletService.bankAccountVerification(res, query)
   }
 
   @Get('/fetch/banks')
+  @Roles(Role.user)
   async fetchBanks(@Res() res: Response) {
     await this.walletService.fetchBanks(res)
   }
 
   @Get('/fetch/banks/:bankCode')
+  @Roles(Role.user)
   async fetchBank(@Res() res: Response, @Param('bankCode') bankCode: string) {
     await this.walletService.fetchBankByBankCode(res, bankCode)
   }
 
   @Get('/linked-banks')
+  @Roles(Role.user)
   async linkedBanks(@Req() req: IRequest, @Res() res: Response) {
     await this.walletService.linkedBanks(res, req.user)
   }
 
   @Post('/linked-banks/add')
+  @Roles(Role.user)
   async linkBankAccount(
     @Req() req: IRequest,
     @Res() res: Response,
@@ -48,12 +55,23 @@ export class WalletController {
   }
 
   @Get('/linked-banks/:id')
+  @Roles(Role.user)
   async getLinkedBank(
     @Req() req: IRequest,
     @Res() res: Response,
     @Param('id') id: string,
   ) {
     await this.walletService.getLinkedBank(id, res, req.user)
+  }
+
+  @Post('/deposit')
+  @Roles(Role.user)
+  async fundWallet(
+    @Res() res: Response,
+    @Req() req: IRequest,
+    @Body() body: FundWalletDTO
+  ) {
+    await this.walletService.fundWallet(res, req.user, body)
   }
 
   @Roles('user')

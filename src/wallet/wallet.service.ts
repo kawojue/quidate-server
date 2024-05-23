@@ -2,6 +2,8 @@ import { Response } from 'express'
 import { Injectable } from '@nestjs/common'
 import { MiscService } from 'lib/misc.service'
 import { StatusCodes } from 'enums/StatusCodes'
+import { TransferStatus } from '@prisma/client'
+import { FundWalletDTO } from './dto/deposit.dto'
 import { toUpperCase } from 'helpers/transformer'
 import { PrismaService } from 'prisma/prisma.service'
 import { ResponseService } from 'lib/response.service'
@@ -43,6 +45,60 @@ export class WalletService {
     }
 
     this.response.sendSuccess(res, StatusCodes.OK, { data: bank })
+  }
+
+  async fundWallet(
+    res: Response,
+    { sub }: ExpressUser,
+    { ref }: FundWalletDTO,
+  ) {
+    try {
+      const wallet = await this.prisma.wallet.findUnique({ where: { userId: sub } })
+
+      if (!wallet) {
+        return this.response.sendError(res, StatusCodes.NotFound, 'Wallet not found')
+      }
+
+      const verifyTx = await this.paystack.verifyTransaction(ref)
+      if (!verifyTx.status || verifyTx?.data?.status !== "success") {
+        return this.response.sendError(res, StatusCodes.PaymentIsRequired, 'Payment is required')
+      }
+
+      const { data } = verifyTx
+      const amountPaid = data.amount / 100
+      const channel = data?.authorization?.channel
+      const authorization_code = data?.authorization?.authorization_code
+
+      const [_, tx] = await this.prisma.$transaction([
+        this.prisma.wallet.update({
+          where: { userId: sub },
+          data: {
+            lastDepoistedAt: new Date(),
+            lastAmountDeposited: amountPaid,
+            ngnBalance: { increment: amountPaid }
+          }
+        }),
+        this.prisma.transactionHistory.create({
+          data: {
+            channel,
+            type: 'DEPOSIT',
+            source: 'fiat',
+            amount: amountPaid,
+            authorization_code,
+            ip: data.ip_address,
+            ref: `deposit-${ref}}`,
+            user: { connect: { id: sub } },
+            broadcastedAt: new Date(data.transaction_date),
+            status: toUpperCase(data.status) as TransferStatus,
+            currency: toUpperCase(data.currency) as CurrencyCode,
+          }
+        })
+      ])
+
+      this.response.sendSuccess(res, StatusCodes.OK, { data: tx })
+    } catch (err) {
+      this.misc.handlePaystackAndServerError(res, err)
+    }
   }
 
   async linkBankAccount(

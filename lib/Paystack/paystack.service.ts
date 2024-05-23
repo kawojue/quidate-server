@@ -62,12 +62,16 @@ export class PaystackService {
         return this.consumer.sendRequest<TransferEventData>('GET', `/transfer/verify/${reference}`)
     }
 
-    listBanks(limit?: number) {
-        const url = `/bank?country=nigeria&perPage=${limit || 250}`
+    verifyTransaction(reference: string) {
+        return this.consumer.sendRequest<VerifyTransaction>('GET', `transaction/verify/${reference}`)
+    }
+
+    listBanks() {
+        const url = `/bank?country=nigeria&perPage=300`
         return this.consumer.sendRequest<ListBanksResponse>('GET', url)
     }
 
-    async getBankByBankCode(bankCode: string) {
+    async getBankByBankCode(bankCode: string): Promise<Bank> {
         const { data } = await this.listBanks()
 
         const bankDictionary = data.reduce((acc, bank) => {

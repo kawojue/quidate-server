@@ -1,6 +1,5 @@
 import { UAParser } from 'ua-parser-js'
 import { JwtService } from '@nestjs/jwt'
-import { WhoisService } from 'lib/whois.service'
 import { formatSize } from 'helpers/transformer'
 import { getIpAddress } from 'helpers/getIpAddress'
 import { PrismaService } from 'prisma/prisma.service'
@@ -10,16 +9,14 @@ import { HttpException, Injectable, NestMiddleware } from '@nestjs/common'
 
 @Injectable()
 export class LoggerMiddleware implements NestMiddleware {
-    private whois: WhoisService
     private prisma: PrismaService
     private jwtService: JwtService
     private rateLimiter = new RateLimiterMemory({
-        points: 20,
+        points: 30,
         duration: 60,
     })
 
     constructor() {
-        this.whois = new WhoisService()
         this.prisma = new PrismaService()
         this.jwtService = new JwtService()
     }
@@ -58,30 +55,6 @@ export class LoggerMiddleware implements NestMiddleware {
 
         if (blacklisted) {
             throw new HttpException("Your IP has been blacklisted", 403)
-        }
-
-        if (endpoint === "/api/v2/auth/signup") {
-            const ALLOWED_COUNTRIES = ['Nigeria']
-            const email = req.body?.email?.trim().toLowerCase()
-
-            if (email) {
-                const data = await this.whois.getInfo(req)
-
-                if (!ALLOWED_COUNTRIES.includes(data.country)) {
-                    throw new HttpException("Your Country is not allowed", 403)
-                }
-
-                const user = await this.prisma.user.findUnique({
-                    where: { email }
-                })
-
-                if (!user) {
-
-                }
-
-                console.log(data)
-            }
-            // Moving to auth
         }
 
         const log = {

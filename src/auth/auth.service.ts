@@ -1,17 +1,18 @@
-import { PrismaService } from 'prisma/prisma.service'
 import { Request, Response } from 'express'
 import { Injectable } from '@nestjs/common'
 import { PinDto } from './dto/pin-auth.dto'
 import { ReportDto } from './dto/report.dto'
 import { MiscService } from 'lib/misc.service'
-import { titleText } from 'helpers/transformer'
 import { StatusCodes } from 'enums/StatusCodes'
 import { generateOTP } from 'helpers/generator'
 import { PlunkService } from 'lib/plunk.service'
+import { WhoisService } from 'lib/whois.service'
 import { getIpAddress } from 'helpers/getIpAddress'
-import { ResponseService } from 'lib/response.service'
 import { LoginAuthDto } from './dto/login-auth.dto'
+import { ResponseService } from 'lib/response.service'
+import { PrismaService } from 'prisma/prisma.service'
 import { EncryptionService } from 'lib/encryption.service'
+import { titleText, toLowerCase } from 'helpers/transformer'
 import { PaystackService } from 'lib/Paystack/paystack.service'
 import { CreateAuthDto, UsernameDto } from './dto/create-auth.dto'
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service'
@@ -22,115 +23,130 @@ export class AuthService {
   constructor(
     private readonly misc: MiscService,
     private readonly plunk: PlunkService,
+    private readonly whois: WhoisService,
     private readonly prisma: PrismaService,
     private readonly response: ResponseService,
     private readonly paystack: PaystackService,
-    private readonly cloudinaryService: CloudinaryService,
-    private readonly encryptionService: EncryptionService,
+    private readonly encryption: EncryptionService,
+    private readonly cloudinary: CloudinaryService,
   ) { }
 
-  // async signup(res: Response, { fullName, phone, email, password, username }: CreateAuthDto) {
-  //   try {
-  //     fullName = titleText(fullName)
-  //     email = email.trim().toLowerCase()
-  //     username = username.trim().toLowerCase()
+  async signup(
+    req: Request,
+    res: Response,
+    {
+      fullName, username,
+      phone, email, password
+    }: CreateAuthDto
+  ) {
+    try {
+      email = toLowerCase(email)
+      fullName = titleText(fullName)
+      username = toLowerCase(username)
 
-  //     if (!this.validateUsername(username)) {
-  //       this.response.sendError(res, StatusCodes.BadRequest, "Username is not allowed")
-  //       return
-  //     }
+      if (!this.misc.validateUsername(username)) {
+        return this.response.sendError(res, StatusCodes.BadRequest, "Username is not allowed")
+      }
 
-  //     const user = await this.prisma.user.findUnique({
-  //       where: { email }
-  //     })
+      const findByEmail = await this.prisma.user.findUnique({
+        where: { email }
+      })
 
-  //     if (user) {
-  //       this.response.sendError(res, StatusCodes.Conflict, "Account with this email already exists")
-  //       return
-  //     }
+      if (findByEmail) {
+        return this.response.sendError(res, StatusCodes.Conflict, "Account with this email already exist")
+      }
 
-  //     const findCustomerByPhone = await this.prisma.customer.findUnique({
-  //       where: { phone }
-  //     })
+      const findByPhone = await this.prisma.user.findUnique({
+        where: { phone }
+      })
 
-  //     if (findCustomerByPhone) {
-  //       this.response.sendError(res, StatusCodes.Conflict, "Customer with this phone number already exists")
-  //       return
-  //     }
+      if (findByPhone) {
+        return this.response.sendError(res, StatusCodes.Conflict, "Account with this phone number already exist")
+      }
 
-  //     const findUserByUsername = await this.prisma.user.findUnique({
-  //       where: { username }
-  //     })
+      password = await this.encryption.hash(password)
 
-  //     if (findUserByUsername) {
-  //       this.response.sendError(res, StatusCodes.Conflict, "Username has been taken")
-  //       return
-  //     }
+      const ALLOWED_CONTINENTS = ['Africa']
+      const ip_info = await this.whois.getInfo(req)
+      if (!ALLOWED_CONTINENTS.includes(ip_info.continent)) {
+        this.response.sendError(res, StatusCodes.Forbidden, "Your Country is not allowed")
+      }
 
-  //     password = await this.encryptionService.hash(password)
+      const user = await this.prisma.user.create({
+        data: {
+          primaryAsset: 'BTC', username,
+          lastPasswordChanged: new Date(),
+          fullName, email, password, phone,
+        }
+      })
 
-  //     const fullNameArray = fullName.split(' ')
-  //     const first_name = fullNameArray[0]
-  //     const last_name = fullNameArray[fullNameArray.length - 1]
-  //     const { data: customer } = await this.paystack.createCustomer({ email, first_name, last_name, phone })
+      if (user) {
+        await this.prisma.ip.create({
+          data: {
+            ip: ip_info.ip,
+            type: ip_info.type,
+            city: ip_info.city,
+            isEu: ip_info.is_eu,
+            region: ip_info.region,
+            postal: ip_info.postal,
+            capital: ip_info.capital,
+            country: ip_info.country,
+            borders: ip_info.borders,
+            flagImg: ip_info.flag.img,
+            latitude: ip_info.latitude,
+            longitude: ip_info.longitude,
+            continent: ip_info.continent,
+            flagEmoji: ip_info.flag.emoji,
+            regionCode: ip_info.region_code,
+            countryCode: ip_info.country_code,
+            callingCode: ip_info.calling_code,
+            currencyCode: ip_info.currency.code,
+            currencyName: ip_info.currency.name,
+            connectionIsp: ip_info.connection.isp,
+            connectionOrg: ip_info.connection.org,
+            continentCode: ip_info.continent_code,
+            connectionAsn: ip_info.connection.asn,
+            currencySymbol: ip_info.currency.symbol,
+            currencyPlural: ip_info.currency.plural,
+            connectionDomain: ip_info.connection.domain,
+            flagEmojiUnicode: ip_info.flag.emoji_unicode,
+            user: { connect: { id: user.id } }
+          }
+        })
+      }
 
-  //     const newUser = await this.prisma.user.create({
-  //       data: { email, username, fullName, password }
-  //     })
+      res.on('finish', async () => {
+        if (user) {
+          const otp = generateOTP()
 
-  //     const otp = generateOTP()
-  //     const isProd = process.env.NODE_ENV === 'production'
+          await Promise.all([
+            this.plunk.sendPlunkEmail({
+              to: email,
+              subject: 'Verify your email',
+              body: `otp : ${otp.totp}`
+            }),
+            this.prisma.totp.create({
+              data: {
+                otp: otp.totp,
+                otp_expiry: otp.totp_expiry,
+                user: {
+                  connect: { id: user.id }
+                }
+              },
+            }),
+          ])
 
-  //     await this.prisma.customer.create({
-  //       data: {
-  //         phone,
-  //         first_name,
-  //         last_name,
-  //         integration: customer.integration,
-  //         customer_code: customer.customer_code,
-  //         user: {
-  //           connect: {
-  //             id: newUser.id
-  //           }
-  //         }
-  //       }
-  //     })
+          if (process.env.NODE_ENV !== 'production') {
+            console.log(otp.totp)
+          }
+        }
+      })
 
-  //     await this.prisma.totp.create({
-  //       data: {
-  //         otp: otp.totp,
-  //         otp_expiry: otp.totp_expiry,
-  //         user: {
-  //           connect: {
-  //             id: newUser.id
-  //           }
-  //         }
-  //       },
-  //     })
+      this.response.sendSuccess(res, StatusCodes.Created, "Account created successfully")
+    } catch (err) {
 
-  //     if (isProd) {
-  //       await this.plunk.sendPlunkEmail({
-  //         to: email,
-  //         subject: 'Verify your email',
-  //         body: `otp : ${otp.totp}`
-  //       })
-  //     } else {
-  //       console.log(otp.totp)
-  //     }
-
-  //     this.response.sendSuccess(res, StatusCodes.Created, {
-  //       message: "Account created successfully"
-  //     })
-  //   } catch (err) {
-  //     console.error(err)
-  //     if (err.response?.message) {
-  //       this.response.sendError(res, err.status, err.response.message)
-  //     } else {
-  //       this.response.sendError(res, StatusCodes.InternalServerError, "Something went wrong")
-  //     }
-  //   }
-  // }
-
+    }
+  }
 
   async login(
     res: Response,
@@ -154,7 +170,7 @@ export class AuthService {
         return
       }
 
-      const verifyPassword = await this.encryptionService.compare(password, user.password)
+      const verifyPassword = await this.encryption.compare(password, user.password)
       if (!verifyPassword) {
         this.response.sendError(res, StatusCodes.Unauthorized, "Incorrect Password")
         return
@@ -246,7 +262,7 @@ export class AuthService {
         }
       })
 
-      const verifyPassword = await this.encryptionService.compare(oldPassword, user.password)
+      const verifyPassword = await this.encryption.compare(oldPassword, user.password)
 
       if (!verifyPassword) {
         this.response.sendError(res, StatusCodes.Unauthorized, "Incorrect password")
@@ -258,7 +274,7 @@ export class AuthService {
         return
       }
 
-      const hashedPassword = await this.encryptionService.hash(password1)
+      const hashedPassword = await this.encryption.hash(password1)
 
       await this.prisma.user.update({
         where: {
@@ -459,7 +475,7 @@ export class AuthService {
         return
       }
 
-      const hashedPassword = await this.encryptionService.hash(password1)
+      const hashedPassword = await this.encryption.hash(password1)
 
       await this.prisma.user.update({
         where: {
@@ -527,10 +543,10 @@ export class AuthService {
       })
 
       if (user.avatar?.public_id) {
-        await this.cloudinaryService.delete(user.avatar.public_id)
+        await this.cloudinary.delete(user.avatar.public_id)
       }
 
-      const response = await this.cloudinaryService.upload(file, header)
+      const response = await this.cloudinary.upload(file, header)
 
       const updatedUser = await this.prisma.user.update({
         where: { id: user.id },
@@ -628,7 +644,7 @@ export class AuthService {
           id: userId
         },
         data: {
-          pin: await this.encryptionService.hash(pin1),
+          pin: await this.encryption.hash(pin1),
         }
       })
 
@@ -739,7 +755,7 @@ export class AuthService {
               return this.response.sendError(res, StatusCodes.UnsupportedContent, `File extension is not allowed - ${attachment.originalname}`)
             }
 
-            const response = await this.cloudinaryService.upload(attachment, {
+            const response = await this.cloudinary.upload(attachment, {
               folder: 'QuidateFinance/reports',
               resource_type: extension === 'mp4' ? 'video' : 'image'
             })
@@ -757,7 +773,7 @@ export class AuthService {
             if (filesArray.length > 0) {
               for (const file of filesArray) {
                 if (file?.public_id) {
-                  await this.cloudinaryService.delete(file.public_id)
+                  await this.cloudinary.delete(file.public_id)
                 }
               }
             }

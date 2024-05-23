@@ -3,6 +3,7 @@ import { AuthService } from './auth.service'
 import { JwtModule } from 'src/jwt/jwt.module'
 import { ConfigService } from '@nestjs/config'
 import { MiscService } from 'lib/misc.service'
+import { WhoisService } from 'lib/whois.service'
 import { PlunkService } from 'lib/plunk.service'
 import { PassportModule } from '@nestjs/passport'
 import { AuthController } from './auth.controller'
@@ -24,6 +25,7 @@ import { CloudinaryService } from 'src/cloudinary/cloudinary.service'
     AuthService,
     MiscService,
     JwtStrategy,
+    WhoisService,
     PlunkService,
     PrismaService,
     ConfigService,

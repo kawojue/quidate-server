@@ -9,19 +9,22 @@ datasource db {
 
 model User {
     id                   String               @id @default(auto()) @map("_id") @db.ObjectId
-    ip                   Ip?
     fullName             String
+    phone                String               @unique
     password             String
+    lastPasswordChanged  DateTime
+    lastUsedBiometric    DateTime?
     email                String               @unique
     username             String               @unique
     pin                  String?
     deviceToken          String?
-    primaryAsset         AssetType?
+    primaryAsset         AssetType
     updatedAt            DateTime             @updatedAt
     createdAt            DateTime             @default(now())
     userStatus           UserStatus           @default(active)
     email_verified       Boolean              @default(false)
     role                 Roles                @default(user)
+    Ip                   Ip?
     totp                 Totp?
     avatar               File?
     customer             Customer?

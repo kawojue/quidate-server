@@ -26,10 +26,14 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger'
 export class AuthController {
   constructor(private readonly authService: AuthService) { }
 
-  // @Post("signup")
-  // async signup(@Res() res: Response, @Body() createAuthDto: CreateAuthDto) {
-  //   return await this.authService.signup(res, createAuthDto)
-  // }
+  @Post("signup")
+  async signup(
+    @Req() req: Request,
+    @Res() res: Response,
+    @Body() createAuthDto: CreateAuthDto
+  ) {
+    await this.authService.signup(req, res, createAuthDto)
+  }
 
   @SkipThrottle({ default: false })
   @Throttle({ default: { ttl: 60 * 1000, limit: 5 } })
@@ -39,24 +43,24 @@ export class AuthController {
     @Req() req: Request,
     @Body() loginAuthDto: LoginAuthDto
   ) {
-    return await this.authService.login(res, req, loginAuthDto)
+    await this.authService.login(res, req, loginAuthDto)
   }
 
   @Post("/login/biometric")
   async biometricLogin(@Res() res: Response, @Body() { token }: LoginBiometricDto) {
-    return await this.authService.biometricLogin(res, token)
+    await this.authService.biometricLogin(res, token)
   }
 
   @SkipThrottle({ default: false })
   @Throttle({ default: { ttl: 5 * 60 * 1000, limit: 3 } })
   @Post("/otp/verify")
   async verifyOtp(@Res() res: Response, @Body() { otp }: OtpDto) {
-    return await this.authService.verifyOtp(res, otp)
+    await this.authService.verifyOtp(res, otp)
   }
 
   @Post("/otp/request")
   async resendOtp(@Res() res: Response, @Body() { email }: ResendOTPDto) {
-    return await this.authService.resendOTP(res, email)
+    await this.authService.resendOTP(res, email)
   }
 
   @SkipThrottle({ default: false })
@@ -67,7 +71,7 @@ export class AuthController {
     @Req() req: Request,
     @Body() resetPasswordDto: ResetPasswordDto
   ) {
-    return await this.authService.resetPassword(res, req, resetPasswordDto)
+    await this.authService.resetPassword(res, req, resetPasswordDto)
   }
 
   @ApiBearerAuth()
@@ -79,7 +83,7 @@ export class AuthController {
     @Req() req: IRequest,
     @Body() body: UpdatePasswordDto
   ) {
-    return await this.authService.updatePassword(res, req.user, body)
+    await this.authService.updatePassword(res, req.user, body)
   }
 
   @ApiOperation({
@@ -100,7 +104,7 @@ export class AuthController {
       resource_type: 'image'
     }
 
-    return await this.authService.uploadAvatar(res, req.user, file, header)
+    await this.authService.uploadAvatar(res, req.user, file, header)
   }
 
   @ApiBearerAuth()
@@ -112,7 +116,7 @@ export class AuthController {
     @Req() req: IRequest,
     @Body() pin: PinDto
   ) {
-    return await this.authService.createTransactionPin(res, req.user, pin)
+    await this.authService.createTransactionPin(res, req.user, pin)
   }
 
   @ApiBearerAuth()
@@ -124,7 +128,7 @@ export class AuthController {
     @Req() req: IRequest,
     @Body() username: UsernameDto
   ) {
-    return await this.authService.updateUsername(res, req.user, username)
+    await this.authService.updateUsername(res, req.user, username)
   }
 
   @ApiBearerAuth()
@@ -135,7 +139,7 @@ export class AuthController {
     @Res() res: Response,
     @Req() req: IRequest,
   ) {
-    return await this.authService.deleteAccount(res, req.user)
+    await this.authService.deleteAccount(res, req.user)
   }
 
   @ApiOperation({
@@ -148,6 +152,6 @@ export class AuthController {
     @Body() body: ReportDto,
     @UploadedFiles() attachements: Express.Multer.File[]
   ) {
-    return await this.authService.reportSubmission(res, attachements || [], body)
+    await this.authService.reportSubmission(res, attachements || [], body)
   }
 }

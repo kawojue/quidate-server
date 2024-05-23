@@ -18,6 +18,7 @@ import { SkipThrottle, Throttle } from '@nestjs/throttler'
 import { CreateAuthDto, UsernameDto } from './dto/create-auth.dto'
 import { LoginAuthDto, LoginBiometricDto } from './dto/login-auth.dto'
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger'
+import { BVNDTO } from './dto/bvn.dto'
 
 
 @Controller('auth')
@@ -46,6 +47,17 @@ export class AuthController {
     await this.authService.login(res, req, loginAuthDto)
   }
 
+  @Post('/bvn')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  async manageBVN(
+    @Req() req: IRequest,
+    @Res() res: Response,
+    @Body() body: BVNDTO
+  ) {
+    await this.authService.manageBVN(res, body, req.user)
+  }
+
   @Post("/login/biometric")
   async biometricLogin(@Res() res: Response, @Body() { token }: LoginBiometricDto) {
     await this.authService.biometricLogin(res, token)
@@ -67,8 +79,8 @@ export class AuthController {
   @Throttle({ default: { ttl: 5 * 60 * 1000, limit: 3 } })
   @Post("/password/reset")
   async resetPassword(
-    @Res() res: Response,
     @Req() req: Request,
+    @Res() res: Response,
     @Body() resetPasswordDto: ResetPasswordDto
   ) {
     await this.authService.resetPassword(res, req, resetPasswordDto)

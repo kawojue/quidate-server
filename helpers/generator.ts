@@ -19,7 +19,7 @@ export const generateOTP = (length: number = 6): IGenOTP => {
 
     return {
         totp,
-        totp_expiry: expiryDate.toISOString()
+        totp_expiry: expiryDate
     }
 }
 

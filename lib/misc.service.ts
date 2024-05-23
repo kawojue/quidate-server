@@ -9,12 +9,10 @@ import { PriceConversionService } from './price-conversion'
 
 @Injectable()
 export class MiscService {
-    private jwtService: JwtService
     private response: ResponseService
     private priceConversion: PriceConversionService
 
-    constructor() {
-        this.jwtService = new JwtService()
+    constructor(private readonly jwtService: JwtService) {
         this.response = new ResponseService()
         this.priceConversion = new PriceConversionService()
     }

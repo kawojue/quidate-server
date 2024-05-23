@@ -1,4 +1,4 @@
-import { Customer, PrismaClient } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common'
 
 @Injectable()
@@ -9,20 +9,6 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
     async onModuleDestroy() {
         await this.$disconnect()
-    }
-
-    bvnStatus(customer: Customer) {
-        let bvn_status: 'SUCCESS' | 'PENDING' | 'Not Verified'
-
-        if (customer.bvn && customer.verified === true) {
-            bvn_status = 'SUCCESS'
-        } else if (customer.bvn && customer.verified !== true) {
-            bvn_status = 'PENDING'
-        } else {
-            bvn_status = 'Not Verified'
-        }
-
-        return bvn_status
     }
 
     async getUserWithVirtualAccount(userId: string) {

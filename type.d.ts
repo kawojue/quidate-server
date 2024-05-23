@@ -1,6 +1,6 @@
 interface IGenOTP {
     totp: string
-    totp_expiry: string
+    totp_expiry: Date
 }
 
 interface CloudinaryModuleOptions {

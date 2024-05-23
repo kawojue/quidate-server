@@ -8,33 +8,49 @@ datasource db {
 }
 
 model User {
-    id                   String               @id @default(auto()) @map("_id") @db.ObjectId
-    fullName             String
-    phone                String               @unique
-    password             String
-    lastPasswordChanged  DateTime
-    lastUsedBiometric    DateTime?
-    email                String               @unique
-    username             String               @unique
-    pin                  String?
-    deviceToken          String?
-    primaryAsset         AssetType
-    updatedAt            DateTime             @updatedAt
-    createdAt            DateTime             @default(now())
-    userStatus           UserStatus           @default(active)
-    email_verified       Boolean              @default(false)
-    role                 Roles                @default(user)
-    Ip                   Ip?
-    totp                 Totp?
-    avatar               File?
-    customer             Customer?
-    virtualAccount       VirtualAccount?
-    logs                 Log[]
-    invoices             Invoice[]
-    notifications        Notification[]
-    walletAddresses      WalletAddress[]
-    recipients           LocalRecipient[]
-    transactionHistories TransactionHistory[]
+    id                    String               @id @default(auto()) @map("_id") @db.ObjectId
+    fullName              String
+    password              String
+    email                 String               @unique
+    username              String               @unique
+    updatedAt             DateTime             @updatedAt
+    lastUsedBiometric     DateTime?
+    lastPasswordChanged   DateTime             @default(now())
+    dailyWithdrawalAmount Float                @default(0)
+    lastWithdrawalReset   DateTime             @default(now())
+    createdAt             DateTime             @default(now())
+    userStatus            UserStatus           @default(active)
+    role                  Roles                @default(user)
+    Ip                    Ip?
+    totp                  Totp?
+    wallet                Wallet?
+    profile               Profile?
+    virtualAccount        VirtualAccount?
+    logs                  Log[]
+    invoices              Invoice[]
+    notifications         Notification[]
+    walletAddresses       WalletAddress[]
+    recipients            LocalRecipient[]
+    transactionHistories  TransactionHistory[]
+    level                 Level                @relation(fields: [levelId], references: [id])
+    levelId               String               @db.ObjectId
+}
+
+model Profile {
+    id              String     @id @default(auto()) @map("_id") @db.ObjectId
+    phone           String     @unique
+    bvn             String?    @unique
+    bvn_verified    Boolean    @default(false)
+    pin             String?
+    deviceToken     String?
+    primaryAsset    AssetType?
+    avatar          File?
+    email_verified  Boolean    @default(false)
+    state_of_origin String?
+    nationality     String?
+    dob             String?
+    user            User       @relation(fields: [userId], references: [id])
+    userId          String     @unique @db.ObjectId
 }
 
 model Ip {
@@ -80,6 +96,42 @@ model BlacklistedIP {
     ip String @unique
 }
 
+model Level {
+    id           String          @id @default(auto()) @map("_id") @db.ObjectId
+    name         LeveLName       @unique @default(TIER_1)
+    constraints  LevelConstraint @relation(fields: [constraintId], references: [id])
+    constraintId String          @unique @db.ObjectId
+    users        User[]
+}
+
+model LevelConstraint {
+    id                  String @id @default(auto()) @map("_id") @db.ObjectId
+    maxDailyWithdrawal  Float
+    maxSingleWithdrawal Float
+    level               Level?
+}
+
+model LevelConstraintTierOne {
+    id                  String    @id @default(auto()) @map("_id") @db.ObjectId
+    name                LeveLName @default(TIER_1)
+    maxDailyWithdrawal  Float     @default(1000000)
+    maxSingleWithdrawal Float     @default(200000)
+}
+
+model LevelConstraintTierTwo {
+    id                  String    @id @default(auto()) @map("_id") @db.ObjectId
+    name                LeveLName @default(TIER_2)
+    maxDailyWithdrawal  Float     @default(3000000)
+    maxSingleWithdrawal Float     @default(500000)
+}
+
+model LevelConstraintTierThree {
+    id                  String    @id @default(auto()) @map("_id") @db.ObjectId
+    name                LeveLName @default(TIER_3)
+    maxDailyWithdrawal  Float     @default(1000000000)
+    maxSingleWithdrawal Float     @default(1000000)
+}
+
 model WaitList {
     id    String @id @default(auto()) @map("_id") @db.ObjectId
     email String @unique
@@ -113,26 +165,11 @@ model Cache {
 }
 
 model Totp {
-    id         String @id @default(auto()) @map("_id") @db.ObjectId
-    otp        String
-    otp_expiry String
-    user       User   @relation(fields: [userId], references: [id])
-    userId     String @unique @db.ObjectId
-}
-
-model Customer {
-    id            String  @id @default(auto()) @map("_id") @db.ObjectId
-    bvn           String?
-    customer_code String  @unique
-    verified      Boolean @default(false)
-    phone         String  @unique()
-    integration   Int?
-    domain        String?
-    first_name    String
-    last_name     String
-    middle_name   String?
-    user          User    @relation(fields: [userId], references: [id])
-    userId        String  @unique @db.ObjectId
+    id         String    @id @default(auto()) @map("_id") @db.ObjectId
+    otp        String?
+    otp_expiry DateTime?
+    user       User      @relation(fields: [userId], references: [id])
+    userId     String    @unique @db.ObjectId
 }
 
 model Log {
@@ -157,6 +194,16 @@ model Log {
     userId              String?  @unique @db.ObjectId
     modmin              Modmin?  @relation(fields: [modminId], references: [id])
     modminId            String?  @unique @db.ObjectId
+}
+
+model Wallet {
+    id                  String    @id @default(auto()) @map("_id") @db.ObjectId
+    ngnBalance          Float     @default(0.00)
+    usdBalance          Float     @default(0.00)
+    lastWithdrewAt      DateTime?
+    lastWithdrwalAmount Float?    @default(0)
+    user                User      @relation(fields: [userId], references: [id])
+    userId              String    @unique @db.ObjectId
 }
 
 model VirtualAccount {
@@ -465,6 +512,12 @@ enum Method {
     PUT
     GET
     OPTION
+}
+
+enum LeveLName {
+    TIER_1
+    TIER_2
+    TIER_3
 }
 
 type File {

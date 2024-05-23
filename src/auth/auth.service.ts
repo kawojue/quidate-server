@@ -11,12 +11,14 @@ import { getIpAddress } from 'helpers/getIpAddress'
 import { LoginAuthDto } from './dto/login-auth.dto'
 import { ResponseService } from 'lib/response.service'
 import { PrismaService } from 'prisma/prisma.service'
+import axios, { AxiosError, AxiosResponse } from 'axios'
 import { EncryptionService } from 'lib/encryption.service'
-import { titleText, toLowerCase } from 'helpers/transformer'
 import { PaystackService } from 'lib/Paystack/paystack.service'
 import { CreateAuthDto, UsernameDto } from './dto/create-auth.dto'
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service'
+import { titleText, toLowerCase, toUpperCase } from 'helpers/transformer'
 import { UpdatePasswordDto, ResetPasswordDto } from './dto/password-auth.dto'
+import { BVNDTO } from './dto/bvn.dto'
 
 @Injectable()
 export class AuthService {
@@ -56,7 +58,7 @@ export class AuthService {
         return this.response.sendError(res, StatusCodes.Conflict, "Account with this email already exist")
       }
 
-      const findByPhone = await this.prisma.user.findUnique({
+      const findByPhone = await this.prisma.profile.findUnique({
         where: { phone }
       })
 
@@ -72,16 +74,35 @@ export class AuthService {
         this.response.sendError(res, StatusCodes.Forbidden, "Your Country is not allowed")
       }
 
-      const user = await this.prisma.user.create({
-        data: {
-          primaryAsset: 'BTC', username,
-          lastPasswordChanged: new Date(),
-          fullName, email, password, phone,
-        }
+      const level = await this.prisma.level.findUnique({
+        where: { name: 'TIER_1' },
+        include: { constraints: true }
       })
 
-      if (user) {
-        await this.prisma.ip.create({
+      if (!level) {
+        return this.response.sendError(res, StatusCodes.InternalServerError, "Level constraints not found")
+      }
+
+      const user = await this.prisma.user.create({
+        data: {
+          fullName,
+          username,
+          email,
+          password,
+          dailyWithdrawalAmount: 0,
+          level: { connect: { id: level.id } },
+        },
+      })
+
+      await Promise.all([
+        this.prisma.profile.create({
+          data: {
+            phone,
+            primaryAsset: 'BTC',
+            user: { connect: { id: user.id } }
+          }
+        }),
+        this.prisma.ip.create({
           data: {
             ip: ip_info.ip,
             type: ip_info.type,
@@ -113,7 +134,7 @@ export class AuthService {
             user: { connect: { id: user.id } }
           }
         })
-      }
+      ])
 
       res.on('finish', async () => {
         if (user) {
@@ -144,7 +165,7 @@ export class AuthService {
 
       this.response.sendSuccess(res, StatusCodes.Created, "Account created successfully")
     } catch (err) {
-
+      this.misc.handleServerError(res, err)
     }
   }
 
@@ -159,21 +180,19 @@ export class AuthService {
           email: email.toLowerCase().trim()
         },
         include: {
-          customer: true,
+          profile: true,
           virtualAccount: true,
           walletAddresses: true,
         }
       })
 
       if (!user) {
-        this.response.sendError(res, StatusCodes.NotFound, "Invalid Email or Password")
-        return
+        return this.response.sendError(res, StatusCodes.NotFound, "Invalid Email or Password")
       }
 
       const verifyPassword = await this.encryption.compare(password, user.password)
       if (!verifyPassword) {
-        this.response.sendError(res, StatusCodes.Unauthorized, "Incorrect Password")
-        return
+        return this.response.sendError(res, StatusCodes.Unauthorized, "Incorrect Password")
       }
 
       this.response.sendSuccess(res, StatusCodes.OK, {
@@ -182,16 +201,16 @@ export class AuthService {
           role: user.role,
           userStatus: user.userStatus
         }),
+
         data: {
           id: user.id,
           email: user.email,
           username: user.username,
           fullname: user.fullName,
-          primaryAsset: user.primaryAsset,
-          isPinCreated: user.pin !== null,
-          email_verified: user.email_verified,
-          avatar: user.avatar?.secure_url ?? null,
-          bvn_status: this.prisma.bvnStatus(user.customer),
+          primaryAsset: user.profile.primaryAsset,
+          isPinCreated: user.profile.pin !== null,
+          email_verified: user.profile.email_verified,
+          avatar: user.profile.avatar?.secure_url ?? null,
           isCreatedVirtualAccount: user.virtualAccount !== null,
           isAssignedAddresses: user.walletAddresses.length !== 0,
         },
@@ -212,7 +231,7 @@ export class AuthService {
           id: userId
         },
         include: {
-          customer: true,
+          profile: true,
           virtualAccount: true,
           walletAddresses: true,
         }
@@ -223,22 +242,23 @@ export class AuthService {
         return
       }
 
+      const access_token = await this.misc.generateNewAccessToken({
+        sub: user.id,
+        role: user.role,
+        userStatus: user.userStatus
+      })
+
       this.response.sendSuccess(res, StatusCodes.OK, {
-        access_token: await this.misc.generateNewAccessToken({
-          sub: user.id,
-          role: user.role,
-          userStatus: user.userStatus
-        }),
+        access_token,
         data: {
           id: user.id,
           email: user.email,
           username: user.username,
           fullname: user.fullName,
-          primaryAsset: user.primaryAsset,
-          isPinCreated: user.pin !== null,
-          email_verified: user.email_verified,
-          avatar: user.avatar?.secure_url || null,
-          bvn_status: this.prisma.bvnStatus(user.customer),
+          primaryAsset: user.profile.primaryAsset,
+          isPinCreated: user.profile.pin !== null,
+          email_verified: user.profile.email_verified,
+          avatar: user.profile.avatar?.secure_url || null,
           isCreatedVirtualAccount: user.virtualAccount !== null,
           isAssignedAddresses: user.walletAddresses.length !== 0,
         },
@@ -265,35 +285,35 @@ export class AuthService {
       const verifyPassword = await this.encryption.compare(oldPassword, user.password)
 
       if (!verifyPassword) {
-        this.response.sendError(res, StatusCodes.Unauthorized, "Incorrect password")
-        return
+        return this.response.sendError(res, StatusCodes.Unauthorized, "Incorrect password")
       }
 
       if (password1 !== password2) {
-        this.response.sendError(res, StatusCodes.BadRequest, "Passwords do not match")
-        return
+        return this.response.sendError(res, StatusCodes.BadRequest, "Passwords do not match")
       }
 
       const hashedPassword = await this.encryption.hash(password1)
 
-      await this.prisma.user.update({
-        where: {
-          id: userId
-        },
-        data: { password: hashedPassword }
-      })
-
-      await this.prisma.notification.create({
-        data: {
-          title: 'Password Update',
-          description: 'Your password has been updated successfully',
-          user: {
-            connect: {
-              id: userId
+      await this.prisma.$transaction([
+        this.prisma.user.update({
+          where: {
+            id: userId
+          },
+          data: {
+            password: hashedPassword,
+            lastPasswordChanged: new Date()
+          }
+        }),
+        this.prisma.notification.create({
+          data: {
+            title: 'Password Update',
+            description: 'Your password has been updated successfully',
+            user: {
+              connect: { id: userId }
             }
           }
-        }
-      })
+        })
+      ])
 
       this.response.sendSuccess(res, StatusCodes.OK, {
         message: "Password has been updated successfully"
@@ -314,14 +334,11 @@ export class AuthService {
       })
 
       if (!user) {
-        this.response.sendError(res, StatusCodes.NotFound, "Account does not exist")
-        return
+        return this.response.sendError(res, StatusCodes.NotFound, "Account does not exist")
       }
 
       const totp = await this.prisma.totp.findUnique({
-        where: {
-          userId: user.id
-        }
+        where: { userId: user.id }
       })
 
       const otp = generateOTP()
@@ -341,8 +358,7 @@ export class AuthService {
             mail = true
             eligible = true
           } else {
-            this.response.sendError(res, StatusCodes.Unauthorized, `Request after ${Math.floor(remainingMinutes)} minutues`)
-            return
+            return this.response.sendError(res, StatusCodes.Unauthorized, `Request after ${Math.floor(remainingMinutes)} minutues`)
           }
         }
       } else {
@@ -350,7 +366,7 @@ export class AuthService {
         await this.prisma.totp.create({
           data: {
             otp: otp.totp,
-            otp_expiry: otp.totp_expiry,
+            otp_expiry: new Date(otp.totp_expiry),
             user: {
               connect: { id: user.id }
             }
@@ -365,18 +381,20 @@ export class AuthService {
           },
           data: {
             otp: otp.totp,
-            otp_expiry: otp.totp_expiry
+            otp_expiry: new Date(otp.totp_expiry)
           }
         })
       }
 
-      if (mail) {
-        await this.plunk.sendPlunkEmail({
-          to: user.email,
-          subject: "Verify it is you!",
-          body: `Otp: ${otp.totp}`
-        })
-      }
+      res.on('finish', async () => {
+        if (mail) {
+          await this.plunk.sendPlunkEmail({
+            to: user.email,
+            subject: "Verify it is you!",
+            body: `Otp: ${otp.totp}`
+          })
+        }
+      })
 
       this.response.sendSuccess(res, StatusCodes.OK, {
         message: "New OTP has been sent to your email"
@@ -401,33 +419,30 @@ export class AuthService {
       const otp_expiry = new Date(totp.otp_expiry).getTime()
 
       if (currentTime > otp_expiry) {
+        this.response.sendError(res, StatusCodes.Forbidden, "OTP has expired")
         await this.prisma.totp.update({
           where: {
             id: totp.id
           },
           data: {
-            otp: "",
-            otp_expiry: ""
+            otp: null,
+            otp_expiry: null,
           }
         })
-        this.response.sendError(res, StatusCodes.Forbidden, "OTP has expired")
+
         return
       }
 
-      const updatedUser = await this.prisma.user.update({
-        where: {
-          id: totp.userId
-        },
-        data: {
-          email_verified: true,
-        }
+      const profile = await this.prisma.profile.update({
+        where: { userId: totp.userId },
+        data: { email_verified: true }
       })
 
-      await this.prisma.totp.delete({
-        where: {
-          userId: updatedUser.id
-        }
-      })
+      if (profile) {
+        await this.prisma.totp.delete({
+          where: { userId: profile.id }
+        })
+      }
 
       this.response.sendSuccess(res, StatusCodes.OK, {
         verified: true,
@@ -454,8 +469,7 @@ export class AuthService {
       })
 
       if (!totp || !totp.otp_expiry) {
-        this.response.sendError(res, StatusCodes.Unauthorized, 'Invalid OTP')
-        return
+        return this.response.sendError(res, StatusCodes.Unauthorized, 'Invalid OTP')
       }
 
       const currentTime = new Date().getTime()
@@ -464,46 +478,47 @@ export class AuthService {
       if (currentTime > otp_expiry) {
         this.response.sendError(res, StatusCodes.Forbidden, "OTP has expired")
         await this.prisma.totp.update({
-          where: {
-            id: totp.id
-          },
+          where: { id: totp.id },
           data: {
-            otp: "",
-            otp_expiry: ""
+            otp: null,
+            otp_expiry: null
           }
         })
+
         return
       }
 
       const hashedPassword = await this.encryption.hash(password1)
 
-      await this.prisma.user.update({
-        where: {
-          id: totp.userId
-        },
-        data: {
-          email_verified: true,
-          password: hashedPassword
-        }
-      })
+      await this.prisma.$transaction([
+        this.prisma.user.update({
+          where: { id: totp.userId },
+          data: {
+            password: hashedPassword,
+            lastPasswordChanged: new Date(),
+          }
+        }),
+        this.prisma.profile.update({
+          where: { userId: totp.userId },
+          data: { email_verified: true }
+        }),
+        this.prisma.totp.delete({
+          where: { id: totp.id }
+        }),
 
-      await this.prisma.totp.delete({
-        where: {
-          id: totp.id
-        }
-      })
-
-      await this.prisma.notification.create({
-        data: {
-          title: 'Password Reset',
-          description: `Your password has been reseted successfully. IP Address: ${getIpAddress(req)}`,
-          user: {
-            connect: {
-              id: totp.userId
+        this.prisma.notification.create({
+          data: {
+            title: 'Password Reset',
+            description: `Your password has been reseted successfully. IP Address: ${getIpAddress(req)}`,
+            user: {
+              connect: {
+                id: totp.userId
+              }
             }
           }
-        }
-      })
+        })
+      ])
+
 
       this.response.sendSuccess(res, StatusCodes.OK, {
         message: "Password reset was successful"
@@ -514,12 +529,11 @@ export class AuthService {
   }
 
   async uploadAvatar(
-    res: Response, reqUser: ExpressUser,
+    res: Response, { sub }: ExpressUser,
     file: Express.Multer.File, header: FileDest,
   ) {
     try {
-      const userId = reqUser.sub
-      const MAX_SIZE = 5_242_880 as const
+      const MAX_SIZE = 3_145_728 as const
       const allowedExt: string[] = ['jpg', 'png']
 
       if (!file) {
@@ -534,22 +548,21 @@ export class AuthService {
 
       const fileExt = file.originalname.split('.').pop()
       if (!allowedExt.includes(fileExt)) {
-        this.response.sendError(res, StatusCodes.UnsupportedContent, "File extension is not allowed")
-        return
+        return this.response.sendError(res, StatusCodes.UnsupportedContent, "File extension is not allowed")
       }
 
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId }
+      const profile = await this.prisma.profile.findUnique({
+        where: { userId: sub }
       })
 
-      if (user.avatar?.public_id) {
-        await this.cloudinary.delete(user.avatar.public_id)
+      if (profile.avatar?.public_id) {
+        await this.cloudinary.delete(profile.avatar.public_id)
       }
 
       const response = await this.cloudinary.upload(file, header)
 
-      const updatedUser = await this.prisma.user.update({
-        where: { id: user.id },
+      const updatedUser = await this.prisma.profile.update({
+        where: { userId: sub },
         data: {
           avatar: {
             public_url: response.url,
@@ -569,50 +582,25 @@ export class AuthService {
     }
   }
 
-  async createTransactionPin(res: Response, reqUser: ExpressUser, { pin1, pin2, otp }: PinDto) {
+  async createTransactionPin(
+    res: Response,
+    { sub }: ExpressUser,
+    { pin1, pin2, otp }: PinDto,
+  ) {
     try {
-      const userId = reqUser.sub
-      const user = await this.prisma.user.findUnique({
-        where: {
-          id: userId
-        },
-        include: {
-          customer: true
-        }
+      const user = await this.prisma.profile.findUnique({
+        where: { userId: sub },
       })
-
-      if (!user) {
-        this.response.sendError(res, StatusCodes.NotFound, "Somthing went wrong")
-        return
-      }
 
       const isProd = process.env.NODE_ENV === 'production'
       if (isProd) {
         if (!user.email_verified) {
-          this.response.sendError(res, StatusCodes.Forbidden, "Verify your email before creating a transaction PIN")
-          return
-        }
-
-        if (!user.customer.verified) {
-          this.response.sendError(res, StatusCodes.Unauthorized, "Complete your KYC verification")
-          await this.prisma.notification.create({
-            data: {
-              title: 'Attempted to Create a Transaction PIN',
-              description: 'You need to complete your KYC Verification before creating a Transaction PIN',
-              user: {
-                connect: {
-                  id: user.id
-                }
-              }
-            }
-          })
-          return
+          return this.response.sendError(res, StatusCodes.Forbidden, "Verify your email before creating a transaction PIN")
         }
       }
 
       if (pin1 !== pin2) {
-        this.response.sendError(res, StatusCodes.BadRequest, "PINs do not match")
-        return
+        return this.response.sendError(res, StatusCodes.BadRequest, "PINs do not match")
       }
 
       if (user.pin) {
@@ -630,35 +618,32 @@ export class AuthService {
 
         if (expired) {
           this.response.sendError(res, StatusCodes.Forbidden, 'OTP has expired')
-          this.prisma.totp.delete({
+          await this.prisma.totp.delete({
             where: {
-              userId: totp.user.id
+              userId: totp.userId
             }
           })
           return
         }
       }
 
-      await this.prisma.user.update({
-        where: {
-          id: userId
-        },
-        data: {
-          pin: await this.encryption.hash(pin1),
-        }
-      })
-
-      await this.prisma.notification.create({
-        data: {
-          title: 'Created Transaction PIN',
-          description: `You've successfully created a transaction PIN. Your PIN is secured and encrypted.`,
-          user: {
-            connect: {
-              id: userId
+      await this.prisma.$transaction([
+        this.prisma.profile.update({
+          where: { userId: sub },
+          data: {
+            pin: await this.encryption.hash(pin1),
+          }
+        }),
+        this.prisma.notification.create({
+          data: {
+            title: 'Created Transaction PIN',
+            description: `You've successfully created a transaction PIN. Your PIN is secured and encrypted.`,
+            user: {
+              connect: { id: sub }
             }
           }
-        }
-      })
+        })
+      ])
 
       this.response.sendSuccess(res, StatusCodes.OK, {
         message: "Transaction PIN has been created successfully"
@@ -668,10 +653,13 @@ export class AuthService {
     }
   }
 
-  async updateUsername(res: Response, reqUser: ExpressUser, { username }: UsernameDto) {
+  async updateUsername(
+    res: Response,
+    { sub: userId }: ExpressUser,
+    { username }: UsernameDto,
+  ) {
     try {
-      const userId = reqUser.sub
-      username = username.trim().toLowerCase()
+      username = toLowerCase(username)
 
       const user = await this.prisma.user.findUnique({
         where: {
@@ -723,7 +711,7 @@ export class AuthService {
       })
 
       this.response.sendSuccess(res, StatusCodes.OK, {
-        username,
+        data: { username },
         message: "Username has been updated successfully"
       })
     } catch (err) {
@@ -801,6 +789,95 @@ export class AuthService {
     }
   }
 
+  async manageBVN(
+    res: Response,
+    { bvn }: BVNDTO,
+    { sub }: ExpressUser,
+  ) {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: sub }
+      })
+
+      const profile = await this.prisma.profile.findUnique({
+        where: { userId: sub }
+      })
+
+      if (profile && profile.bvn && profile.bvn_verified) {
+        return this.response.sendError(res, StatusCodes.Conflict, "Existing BVN")
+      }
+
+      let data: {
+        dob: string
+        phone: string
+        gender: string
+        full_name: string
+        nationality: string
+        state_of_origin: string
+      } | null
+      let matchingNamesCount = 0
+
+      await axios.post(
+        "https://api.verified.africa/sfx-verify/v3/id-service/",
+        {
+          "searchParameter": bvn,
+          "verificationType": "BVN-FULL-DETAILS"
+        },
+        {
+          headers: {
+            "userId": process.env.BVN_USER_ID,
+            "apiKey": process.env.BVN_API_KEY,
+          }
+        }
+      ).then((res: AxiosResponse) => {
+        data = res.data?.response || null
+      }).catch((err: AxiosError) => {
+        console.error(err)
+        return this.response.sendError(res, StatusCodes.BadRequest, "Error fetching your data")
+      })
+
+      if (data === null) {
+        return this.response.sendError(res, StatusCodes.Forbidden, "Invalid BVN provided")
+      }
+
+      const full_name: string[] = toUpperCase(user.fullName).split(' ')
+      const bvn_fullName: string[] = toUpperCase(data.full_name).split(' ')
+
+      for (const bvn_name of bvn_fullName) {
+        if (full_name.includes(bvn_name)) {
+          matchingNamesCount += 1
+        }
+      }
+
+      const verified = matchingNamesCount >= 2
+      if (!verified) {
+        return this.response.sendError(res, StatusCodes.Unauthorized, "Profiles not matched")
+      }
+
+      await this.prisma.$transaction([
+        this.prisma.profile.create({
+          data: {
+            dob: data.dob,
+            phone: data.phone,
+            bvn_verified: verified,
+            nationality: data.nationality,
+            user: { connect: { id: user.id } },
+            bvn: this.encryption.cipherSync(bvn),
+            state_of_origin: data.state_of_origin,
+          },
+        }),
+        this.prisma.user.update({
+          where: { id: user.id },
+          data: { fullName: titleText(data.full_name) }
+        })
+      ])
+
+      this.response.sendSuccess(res, StatusCodes.Created, { message: "Successful", })
+    } catch (err) {
+      this.misc.handleServerError(res, err, "Sorry, something happened on our end")
+    }
+  }
+
   async deleteAccount(res: Response, { sub: id }: ExpressUser) {
     try {
       const user = await this.prisma.user.findUnique({
@@ -808,7 +885,6 @@ export class AuthService {
         include: {
           logs: true,
           totp: true,
-          customer: true,
           recipients: true,
           notifications: true,
           virtualAccount: {
@@ -822,7 +898,6 @@ export class AuthService {
       })
 
       await this.prisma.$transaction([
-        this.prisma.customer.delete({ where: { userId: id } }),
         ...user.walletAddresses.map((wallet) =>
           this.prisma.walletAddress.delete({ where: { id: wallet.id } })
         ),

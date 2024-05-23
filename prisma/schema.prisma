@@ -21,13 +21,14 @@ model User {
     createdAt             DateTime             @default(now())
     userStatus            UserStatus           @default(active)
     role                  Roles                @default(user)
-    Ip                    Ip?
+    ip_info               Ip?
     totp                  Totp?
     wallet                Wallet?
     profile               Profile?
     virtualAccount        VirtualAccount?
     logs                  Log[]
     invoices              Invoice[]
+    banks                 LinkedBank[]
     notifications         Notification[]
     walletAddresses       WalletAddress[]
     recipients            LocalRecipient[]
@@ -114,22 +115,22 @@ model LevelConstraint {
 model LevelConstraintTierOne {
     id                  String    @id @default(auto()) @map("_id") @db.ObjectId
     name                LeveLName @default(TIER_1)
-    maxDailyWithdrawal  Float     @default(1000000)
-    maxSingleWithdrawal Float     @default(200000)
+    maxDailyWithdrawal  Float     @default(500000)
+    maxSingleWithdrawal Float     @default(50000)
 }
 
 model LevelConstraintTierTwo {
     id                  String    @id @default(auto()) @map("_id") @db.ObjectId
     name                LeveLName @default(TIER_2)
-    maxDailyWithdrawal  Float     @default(3000000)
-    maxSingleWithdrawal Float     @default(500000)
+    maxDailyWithdrawal  Float     @default(1000000)
+    maxSingleWithdrawal Float     @default(200000)
 }
 
 model LevelConstraintTierThree {
     id                  String    @id @default(auto()) @map("_id") @db.ObjectId
     name                LeveLName @default(TIER_3)
     maxDailyWithdrawal  Float     @default(1000000000)
-    maxSingleWithdrawal Float     @default(1000000)
+    maxSingleWithdrawal Float     @default(500000)
 }
 
 model WaitList {
@@ -197,13 +198,31 @@ model Log {
 }
 
 model Wallet {
-    id                  String    @id @default(auto()) @map("_id") @db.ObjectId
-    ngnBalance          Float     @default(0.00)
-    usdBalance          Float     @default(0.00)
+    id                  String               @id @default(auto()) @map("_id") @db.ObjectId
+    ngnBalance          Float                @default(0.00)
+    usdBalance          Float                @default(0.00)
+    lastAmountWithdrawn Float                @default(0.00)
+    lastAmountDeposited Float                @default(0.00)
     lastWithdrewAt      DateTime?
-    lastWithdrwalAmount Float?    @default(0)
-    user                User      @relation(fields: [userId], references: [id])
-    userId              String    @unique @db.ObjectId
+    lasCurrencyEffect   TransactionCurrency?
+    lastDepoistedAt     DateTime?
+    createdAt           DateTime             @default(now())
+    updatedAt           DateTime             @updatedAt
+    user                User                 @relation(fields: [userId], references: [id])
+    userId              String               @unique @db.ObjectId
+}
+
+model LinkedBank {
+    id            String   @id @default(auto()) @map("_id") @db.ObjectId
+    bankName      String
+    accountName   String
+    accountNumber String
+    bankCode      String
+    primary       Boolean  @default(false)
+    updatedAt     DateTime @updatedAt
+    createdAt     DateTime @default(now())
+    user          User     @relation(fields: [userId], references: [id])
+    userId        String   @unique @db.ObjectId
 }
 
 model VirtualAccount {

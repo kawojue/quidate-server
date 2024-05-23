@@ -13,8 +13,8 @@ async function main() {
         update: {},
         create: {
             id: tierOneConstraintId,
-            maxDailyWithdrawal: 2000000, // 2 Million
-            maxSingleWithdrawal: 200000, // 200k
+            maxDailyWithdrawal: 500_000, // 500k
+            maxSingleWithdrawal: 50_000, // 50k
         },
     })
 
@@ -23,8 +23,8 @@ async function main() {
         update: {},
         create: {
             id: tierTwoConstraintId,
-            maxDailyWithdrawal: 5000000, // 5 Million
-            maxSingleWithdrawal: 500000, // 500k
+            maxDailyWithdrawal: 1_000_000, // 1 Million
+            maxSingleWithdrawal: 200_000, // 200k
         },
     })
 
@@ -34,7 +34,7 @@ async function main() {
         create: {
             id: tierThreeConstraintId,
             maxDailyWithdrawal: 1e9, // 1 Billion - unlimited
-            maxSingleWithdrawal: 1000000, // 1 Million
+            maxSingleWithdrawal: 500_000, // 500k
         },
     })
 

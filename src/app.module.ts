@@ -16,6 +16,7 @@ import { ResponseService } from 'lib/response.service'
 import { ThreatIntelService } from 'lib/threat.service'
 import { InvoiceModule } from './invoice/invoice.module'
 import { EncryptionService } from 'lib/encryption.service'
+import { WehbooksModule } from './webhooks/webhooks.module'
 import { GiftCardModule } from './gift-card/gift-card.module'
 import { PriceConversionService } from 'lib/price-conversion'
 import cloudinaryConfig from './cloudinary/cloudinary.config'
@@ -42,6 +43,7 @@ import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/c
     AuthModule,
     WalletModule,
     ModminModule,
+    WehbooksModule,
     GiftCardModule,
     CloudinaryModule,
   ],

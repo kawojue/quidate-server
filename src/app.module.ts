@@ -9,6 +9,7 @@ import { PlunkService } from 'lib/plunk.service'
 import { WhoisService } from 'lib/whois.service'
 import { AppController } from './app.controller'
 import { ScheduleModule } from '@nestjs/schedule'
+import { ModminModule } from './modmin/modmin.module'
 import { PrismaService } from 'prisma/prisma.service'
 import { WalletModule } from './wallet/wallet.module'
 import { ResponseService } from 'lib/response.service'
@@ -39,8 +40,9 @@ import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/c
     ScheduleModule.forRoot(),
     AuthModule,
     WalletModule,
+    ModminModule,
     GiftCardModule,
-    CloudinaryModule
+    CloudinaryModule,
   ],
   exports: [PrismaService, EncryptionService],
   controllers: [AppController],

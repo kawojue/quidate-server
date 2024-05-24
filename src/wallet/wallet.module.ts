@@ -7,6 +7,7 @@ import { PrismaService } from 'prisma/prisma.service'
 import { ResponseService } from 'lib/response.service'
 import { WalletController } from './wallet.controller'
 import { BitPowrSdkService } from 'lib/bitPowr.service'
+import { PriceConversionService } from 'lib/price-conversion'
 import { PaystackService } from 'lib/Paystack/paystack.service'
 
 @Module({
@@ -19,6 +20,7 @@ import { PaystackService } from 'lib/Paystack/paystack.service'
     PaystackService,
     ResponseService,
     BitPowrSdkService,
+    PriceConversionService,
   ],
 })
 export class WalletModule { }

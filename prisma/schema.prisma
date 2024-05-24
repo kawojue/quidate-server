@@ -14,8 +14,6 @@ model User {
     email                 String               @unique
     username              String               @unique
     updatedAt             DateTime             @updatedAt
-    lastUsedBiometric     DateTime?
-    lastPasswordChanged   DateTime             @default(now())
     dailyWithdrawalAmount Float                @default(0)
     lastWithdrawalReset   DateTime             @default(now())
     createdAt             DateTime             @default(now())
@@ -32,6 +30,10 @@ model User {
     notifications         Notification[]
     walletAddresses       WalletAddress[]
     transactionHistories  TransactionHistory[]
+    lastUsedBiometricAt   DateTime?
+    lastUsedCredAt        DateTime?
+    lastLoggedInAt        DateTime?
+    lastPasswordChanged   DateTime             @default(now())
     level                 Level                @relation(fields: [levelId], references: [id])
     levelId               String               @db.ObjectId
 }
@@ -42,6 +44,7 @@ model Profile {
     bvn             String?    @unique
     bvn_verified    Boolean    @default(false)
     pin             String?
+    lastPinChanged  DateTime?
     deviceToken     String?
     primaryAsset    AssetType?
     avatar          File?

@@ -10,11 +10,11 @@ import { PriceConversionService } from './price-conversion'
 @Injectable()
 export class MiscService {
     private response: ResponseService
-    private priceConversion: PriceConversionService
+    private conversion: PriceConversionService
 
     constructor(private readonly jwtService: JwtService) {
         this.response = new ResponseService()
-        this.priceConversion = new PriceConversionService()
+        this.conversion = new PriceConversionService()
     }
 
     async generateNewAccessToken({ sub, role, userStatus }: JwtPayload) {
@@ -77,15 +77,15 @@ export class MiscService {
     }
 
     async calculateFees(amount: number, tx_source: TransactionCurrency): Promise<Fee> {
-        const amountInNGN = tx_source === 'NGN' ? amount : (await this.priceConversion.convert_currency(amount, 'USD_TO_NGN')).price
-        const processingFee = tx_source === 'NGN' ? 15 : this.calculateUSDFee(amount) + (await this.priceConversion.convert_currency(15, 'NGN_TO_USD')).price
+        const amountInNGN = tx_source === 'NGN' ? amount : (await this.conversion.convert_currency(amount, 'USD_TO_NGN')).price
+        const processingFee = tx_source === 'NGN' ? 15 : this.calculateUSDFee(amount) + (await this.conversion.convert_currency(15, 'NGN_TO_USD')).price
         let paystackFee: number
 
         if (amountInNGN <= 5_000) {
-            paystackFee = tx_source === 'NGN' ? 10 : (await this.priceConversion.convert_currency(10, 'NGN_TO_USD')).price
+            paystackFee = tx_source === 'NGN' ? 10 : (await this.conversion.convert_currency(10, 'NGN_TO_USD')).price
         } else {
             const paystackFeeAmount = amountInNGN <= 50_000 ? 25 : 50
-            paystackFee = tx_source === 'NGN' ? paystackFeeAmount : (await this.priceConversion.convert_currency(paystackFeeAmount, 'NGN_TO_USD')).price
+            paystackFee = tx_source === 'NGN' ? paystackFeeAmount : (await this.conversion.convert_currency(paystackFeeAmount, 'NGN_TO_USD')).price
         }
 
         const totalFee = processingFee + paystackFee

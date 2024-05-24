@@ -1,13 +1,16 @@
 import { Response } from 'express'
+import { AmountDTO } from './dto/tx.dto'
 import { Injectable } from '@nestjs/common'
 import { MiscService } from 'lib/misc.service'
 import { StatusCodes } from 'enums/StatusCodes'
 import { TransferStatus } from '@prisma/client'
 import { FundWalletDTO } from './dto/deposit.dto'
 import { toUpperCase } from 'helpers/transformer'
+import { genRandomCode } from 'helpers/generator'
 import { PrismaService } from 'prisma/prisma.service'
 import { ResponseService } from 'lib/response.service'
 import { BitPowrSdkService } from 'lib/bitPowr.service'
+import { PriceConversionService } from 'lib/price-conversion'
 import { PaystackService } from 'lib/Paystack/paystack.service'
 import { BankDetailsDTO, ValidateBankDTO } from './dto/bank.dto'
 
@@ -20,6 +23,7 @@ export class WalletService {
     private readonly prisma: PrismaService,
     private readonly response: ResponseService,
     private readonly paystack: PaystackService,
+    private readonly conversion: PriceConversionService,
   ) {
     this.bitPowerSdk = new BitPowrSdkService().getSdk()
   }
@@ -45,6 +49,167 @@ export class WalletService {
     }
 
     this.response.sendSuccess(res, StatusCodes.OK, { data: bank })
+  }
+
+  async sendInternalNGNTOUSD(
+    res: Response,
+    { sub }: ExpressUser,
+    { amount }: AmountDTO,
+  ) {
+    try {
+      if (0 >= amount) {
+        return this.response.sendError(res, StatusCodes.BadRequest, 'Invalid amount')
+      }
+
+      const wallet = await this.prisma.wallet.findUnique({
+        where: { userId: sub }
+      })
+
+      amount = Number(amount)
+      if (amount > wallet.ngnBalance) {
+        return this.response.sendError(res, StatusCodes.UnprocessableEntity, 'Insufficient NGN Balance')
+      }
+
+      const { price: dollarAmount, rate } = await this.conversion.convert_currency(amount, 'NGN_TO_USD')
+
+      const [hist] = await this.prisma.$transaction([
+        this.prisma.transactionHistory.create({
+          data: {
+            amount,
+            dollarAmount,
+            dollarRate: rate,
+            currency: "USD",
+            ref: `conversion-${sub}-${genRandomCode()}`,
+            status: 'COMPLETED',
+            source: 'fiat',
+            channel: 'internal',
+            type: 'CONVERSION',
+            user: {
+              connect: {
+                id: sub
+              }
+            }
+          }
+        }),
+        this.prisma.wallet.update({
+          where: {
+            userId: sub
+          },
+          data: {
+            usdBalance: {
+              increment: dollarAmount
+            },
+            ngnBalance: {
+              decrement: amount
+            }
+          }
+        }),
+      ])
+
+      res.on('finish', async () => {
+        await this.prisma.notification.create({
+          data: {
+            title: 'Conversion - NGN to USD',
+            description: `You've successfully converted ₦${amount.toFixed(2)} to $${dollarAmount.toFixed(2)}. Zero fee`,
+            reference: hist.ref,
+            user: {
+              connect: {
+                id: sub
+              }
+            }
+          }
+        })
+      })
+
+      this.response.sendSuccess(res, StatusCodes.OK, {
+        message: `You converted ₦${amount} to $${dollarAmount}. Zero fee`
+      })
+    } catch (err) {
+      this.misc.handleServerError(res, err, 'Error converting NGN to USD')
+    }
+  }
+
+  async withDrawInternalUSDTONGN(
+    res: Response,
+    { sub }: ExpressUser,
+    amount: number
+  ) {
+    try {
+      if (0 >= amount) {
+        return this.response.sendError(res, StatusCodes.BadRequest, 'Invalid amount')
+      }
+
+      const wallet = await this.prisma.wallet.findUnique({
+        where: {
+          userId: sub
+        }
+      })
+
+      amount = Number(amount)
+      if (amount > wallet.usdBalance) {
+        this.response.sendError(res, StatusCodes.UnprocessableEntity, 'Insufficient USD Balance')
+        return
+      }
+
+      const fee = this.misc.calculateUSDFee(amount)
+      const dollarAmount = amount - fee
+      const { price: ngnAmount, rate } = await this.conversion.convert_currency(dollarAmount, 'USD_TO_NGN')
+
+      const [hist] = await this.prisma.$transaction([
+        this.prisma.transactionHistory.create({
+          data: {
+            amount: ngnAmount,
+            currency: "NGN",
+            dollarAmount: amount,
+            ref: `conversion-${sub}-${genRandomCode()}`,
+            status: 'COMPLETED',
+            source: 'fiat',
+            type: 'CONVERSION',
+            channel: 'internal',
+            dollarRate: rate,
+            user: {
+              connect: {
+                id: sub
+              }
+            }
+          }
+        }),
+        this.prisma.wallet.update({
+          where: {
+            userId: sub
+          },
+          data: {
+            usdBalance: {
+              decrement: amount
+            },
+            ngnBalance: {
+              increment: ngnAmount
+            }
+          }
+        })
+      ])
+
+      res.on('finish', async () => {
+        await this.prisma.notification.create({
+          data: {
+            title: 'Conversion - USD to NGN',
+            description: `You converted $${amount.toFixed(2)} to ₦${ngnAmount.toFixed(2)}. $${fee.toFixed(2)} was charged.`,
+            reference: hist.ref,
+            user: {
+              connect: {
+                id: sub
+              }
+            }
+          }
+        })
+      })
+
+      this.response.sendSuccess(res, StatusCodes.OK, {
+        message: `You've successfully converted $${amount} to ₦${ngnAmount}. $${fee} was charged.`
+      })
+    } catch (err) {
+      this.misc.handleServerError(res, err, 'Error converting USD to NGN')
+    }
   }
 
   async fundWallet(

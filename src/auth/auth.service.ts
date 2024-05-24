@@ -14,7 +14,6 @@ import { ResponseService } from 'lib/response.service'
 import { PrismaService } from 'prisma/prisma.service'
 import axios, { AxiosError, AxiosResponse } from 'axios'
 import { EncryptionService } from 'lib/encryption.service'
-import { PaystackService } from 'lib/Paystack/paystack.service'
 import { CreateAuthDto, UsernameDto } from './dto/create-auth.dto'
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service'
 import { titleText, toLowerCase, toUpperCase } from 'helpers/transformer'
@@ -28,7 +27,6 @@ export class AuthService {
     private readonly whois: WhoisService,
     private readonly prisma: PrismaService,
     private readonly response: ResponseService,
-    private readonly paystack: PaystackService,
     private readonly encryption: EncryptionService,
     private readonly cloudinary: CloudinaryService,
   ) { }
@@ -196,6 +194,13 @@ export class AuthService {
         }),
         this.prisma.linkedBank.count({
           where: { userId: user.id }
+        }),
+        this.prisma.user.update({
+          where: { id: user.id },
+          data: {
+            lastLoggedInAt: new Date(),
+            lastUsedCredAt: new Date()
+          }
         })
       ])
 
@@ -240,7 +245,7 @@ export class AuthService {
       }
 
       const lastPasswordChanged = new Date(user.lastPasswordChanged)
-      const lastUsedBiometric = user.lastUsedBiometric ? new Date(user.lastUsedBiometric) : null
+      const lastUsedBiometric = user.lastUsedBiometricAt ? new Date(user.lastUsedBiometricAt) : null
 
       if (!lastUsedBiometric || lastPasswordChanged > lastUsedBiometric) {
         return this.response.sendError(res, StatusCodes.Unauthorized, 'Please log in with your credentials due to recent password change.')
@@ -252,6 +257,13 @@ export class AuthService {
         }),
         this.prisma.walletAddress.count({
           where: { userId: user.id }
+        }),
+        this.prisma.user.update({
+          where: { id: user.id },
+          data: {
+            lastLoggedInAt: new Date(),
+            lastUsedBiometricAt: new Date()
+          }
         })
       ])
 
@@ -259,11 +271,6 @@ export class AuthService {
         sub: user.id,
         role: user.role,
         userStatus: user.userStatus
-      })
-
-      await this.prisma.user.update({
-        where: { id: user.id },
-        data: { lastUsedBiometric: new Date() }
       })
 
       this.response.sendSuccess(res, StatusCodes.OK, {
@@ -649,6 +656,7 @@ export class AuthService {
           where: { userId: sub },
           data: {
             pin: await this.encryption.hash(pin1),
+            lastPinChanged: new Date(),
           }
         }),
         this.prisma.notification.create({
@@ -886,6 +894,15 @@ export class AuthService {
           data: { fullName: titleText(data.full_name) }
         })
       ])
+
+      res.on('finish', async () => {
+        await this.prisma.recipient.updateMany({
+          where: { fullname: user.fullName },
+          data: {
+            fullname: titleText(data.full_name)
+          }
+        })
+      })
 
       this.response.sendSuccess(res, StatusCodes.Created, { message: "Successful", })
     } catch (err) {

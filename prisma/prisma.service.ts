@@ -11,17 +11,6 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         await this.$disconnect()
     }
 
-    async getUserWithVirtualAccount(userId: string) {
-        return await this.user.findUnique({
-            where: {
-                id: userId
-            },
-            include: {
-                virtualAccount: true
-            }
-        })
-    }
-
     async hasCreatedFreeInvoicesTwiceThisMonth(userId: string) {
         const currentDate = new Date()
         const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1, 0, 0, 0)

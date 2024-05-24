@@ -41,10 +41,9 @@ export class AuthController {
   @Post("/login")
   async login(
     @Res() res: Response,
-    @Req() req: Request,
     @Body() loginAuthDto: LoginAuthDto
   ) {
-    await this.authService.login(res, req, loginAuthDto)
+    await this.authService.login(res, loginAuthDto)
   }
 
   @Post('/bvn')

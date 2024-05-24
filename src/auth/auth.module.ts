@@ -11,7 +11,6 @@ import { JwtStrategy } from 'src/jwt/jwt.strategy'
 import { PrismaService } from 'prisma/prisma.service'
 import { ResponseService } from 'lib/response.service'
 import { EncryptionService } from 'lib/encryption.service'
-import { PaystackService } from 'lib/Paystack/paystack.service'
 import { CloudinaryModule } from 'src/cloudinary/cloudinary.module'
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service'
 
@@ -30,7 +29,6 @@ import { CloudinaryService } from 'src/cloudinary/cloudinary.service'
     PrismaService,
     ConfigService,
     ResponseService,
-    PaystackService,
     EncryptionService,
     CloudinaryService,
   ],

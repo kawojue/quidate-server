@@ -1,12 +1,17 @@
 import { Response } from 'express'
+import { AmountDTO } from './dto/tx.dto'
 import { Roles } from 'src/role.decorator'
 import { AuthGuard } from '@nestjs/passport'
 import { Roles as Role } from '@prisma/client'
+import { MiscService } from 'lib/misc.service'
+import { StatusCodes } from 'enums/statusCodes'
 import { WalletService } from './wallet.service'
 import { SkipThrottle } from '@nestjs/throttler'
 import { FundWalletDTO } from './dto/deposit.dto'
 import { RolesGuard } from 'src/jwt/jwt-auth.guard'
+import { ResponseService } from 'lib/response.service'
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
+import { PriceConversionService } from 'lib/price-conversion'
 import { BankDetailsDTO, ValidateBankDTO } from './dto/bank.dto'
 import {
   Controller, Get, Post, Param, UseGuards, Req, Res, Query, Body
@@ -18,7 +23,12 @@ import {
 @Controller('wallet')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 export class WalletController {
-  constructor(private readonly walletService: WalletService) { }
+  constructor(
+    private readonly misc: MiscService,
+    private readonly response: ResponseService,
+    private readonly walletService: WalletService,
+    private readonly conversion: PriceConversionService,
+  ) { }
 
   @Get('/verify/bank-details')
   @Roles(Role.user)
@@ -102,5 +112,27 @@ export class WalletController {
   @Get('/address/:accountId')
   async fetchAddressesByAccountId(@Res() res: Response, @Param('accountId') accountId: string) {
     await this.walletService.fetchAddressesByAccountId(res, accountId)
+  }
+
+  @Get('/ngn-usd')
+  async internalNGNTOUSD(@Res() res: Response, @Query() { amount }: AmountDTO) {
+    const ngn = Number(amount)
+    const usd = await this.conversion.convert_currency(ngn, 'NGN_TO_USD')
+
+    this.response.sendSuccess(res, StatusCodes.OK, {
+      data: { ngn, usd }
+    })
+  }
+
+  @Get('/usd-ngn')
+  async internalUSDTONGN(@Res() res: Response, @Query() { amount }: AmountDTO) {
+    const usd = Number(amount)
+    const fee = this.misc.calculateUSDFee(usd)
+    const ngn = await this.conversion.convert_currency(usd, 'USD_TO_NGN')
+    const settlementAmount = await this.conversion.convert_currency((usd - fee), 'USD_TO_NGN')
+
+    this.response.sendSuccess(res, StatusCodes.OK, {
+      data: { ngn, usd, fee, settlementAmount }
+    })
   }
 }

@@ -694,7 +694,7 @@ export class WalletService {
       })
 
       if (linkedBanksCount > 0) {
-        return this.response.sendError(res, StatusCodes.NotFound, "Create a Virtual Account before assigning addresses")
+        return this.response.sendError(res, StatusCodes.NotFound, "Link a primary bank account before assigning addresses")
       }
 
       if (walletAddressesCount > 0) {

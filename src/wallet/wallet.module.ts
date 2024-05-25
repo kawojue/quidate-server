@@ -7,9 +7,9 @@ import { PrismaService } from 'prisma/prisma.service'
 import { ResponseService } from 'lib/response.service'
 import { WalletController } from './wallet.controller'
 import { BitPowrSdkService } from 'lib/bitPowr.service'
+import { EncryptionService } from 'lib/encryption.service'
 import { PriceConversionService } from 'lib/price-conversion'
 import { PaystackService } from 'lib/Paystack/paystack.service'
-import { EncryptionService } from 'lib/encryption.service'
 
 @Module({
   imports: [JwtModule, PassportModule.register({ defaultStrategy: 'jwt' })],

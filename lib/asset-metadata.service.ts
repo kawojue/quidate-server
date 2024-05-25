@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { StatusCodes } from 'enums/StatusCodes'
+import { StatusCodes } from 'enums/statusCodes'
 import { PrismaService } from 'prisma/prisma.service'
 import { HttpException, Injectable } from '@nestjs/common'
 

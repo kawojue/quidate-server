@@ -29,4 +29,49 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
         return count >= 2
     }
+
+    async biometricCheck(userId: string, type: 'Login' | 'Tx') {
+        const user = await this.user.findUnique({
+            where: { id: userId },
+            select: {
+                lastLoggedInAt: true,
+                lastPasswordChanged: true,
+                lastUsedBiometricAt: true,
+            }
+        })
+
+        const profile = await this.profile.findUnique({
+            where: { userId },
+            select: { lastPinChanged: true }
+        })
+
+        if (!user) {
+            throw new Error('User not found')
+        }
+
+        const { lastLoggedInAt, lastPasswordChanged, lastUsedBiometricAt } = user
+
+        if (type === 'Login') {
+            if (!lastUsedBiometricAt || lastLoggedInAt > lastUsedBiometricAt || lastPasswordChanged > lastUsedBiometricAt) {
+                return {
+                    isAbleToUseBiometric: false,
+                    reason: 'Password required due to recent login or password change.'
+                }
+            }
+        } else if (type === 'Tx') {
+            if (!profile) {
+                throw new Error('Profile not found')
+            }
+            const { lastPinChanged } = profile
+
+            if (!lastUsedBiometricAt || lastPinChanged > lastUsedBiometricAt) {
+                return {
+                    isAbleToUseBiometric: false,
+                    reason: 'PIN required due to recent PIN change.'
+                }
+            }
+        }
+
+        return { isAbleToUseBiometric: true }
+    }
 }

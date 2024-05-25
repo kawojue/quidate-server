@@ -72,12 +72,12 @@ export class AuthService {
         this.response.sendError(res, StatusCodes.Forbidden, "Your Country is not allowed")
       }
 
-      const level = await this.prisma.level.findUnique({
+      const tierOne = await this.prisma.level.findUnique({
         where: { name: 'TIER_1' },
         include: { constraints: true }
       })
 
-      if (!level) {
+      if (!tierOne) {
         return this.response.sendError(res, StatusCodes.InternalServerError, "Level constraints not found")
       }
 
@@ -88,7 +88,7 @@ export class AuthService {
           email,
           password,
           dailyWithdrawalAmount: 0,
-          level: { connect: { id: level.id } },
+          level: { connect: { id: tierOne.id } },
         },
       })
 
@@ -244,11 +244,10 @@ export class AuthService {
         return this.response.sendError(res, StatusCodes.NotFound, 'Account not found')
       }
 
-      const lastPasswordChanged = new Date(user.lastPasswordChanged)
-      const lastUsedBiometric = user.lastUsedBiometricAt ? new Date(user.lastUsedBiometricAt) : null
+      const checkings = await this.prisma.biometricCheck(userId, 'Login')
 
-      if (!lastUsedBiometric || lastPasswordChanged > lastUsedBiometric) {
-        return this.response.sendError(res, StatusCodes.Unauthorized, 'Please log in with your credentials due to recent password change.')
+      if (!checkings.isAbleToUseBiometric) {
+        return this.response.sendError(res, StatusCodes.Unauthorized, checkings.reason)
       }
 
       const [linkedBanksCount, walletAddressesCount] = await this.prisma.$transaction([
@@ -819,11 +818,11 @@ export class AuthService {
   ) {
     try {
       const user = await this.prisma.user.findUnique({
-        where: { id: sub }
+        where: { id: sub },
       })
 
       const profile = await this.prisma.profile.findUnique({
-        where: { userId: sub }
+        where: { userId: sub },
       })
 
       if (profile && profile.bvn && profile.bvn_verified) {
@@ -843,14 +842,14 @@ export class AuthService {
       await axios.post(
         "https://api.verified.africa/sfx-verify/v3/id-service/",
         {
-          "searchParameter": bvn,
-          "verificationType": "BVN-FULL-DETAILS"
+          searchParameter: bvn,
+          verificationType: "BVN-FULL-DETAILS",
         },
         {
           headers: {
-            "userId": process.env.BVN_USER_ID,
-            "apiKey": process.env.BVN_API_KEY,
-          }
+            userId: process.env.BVN_USER_ID,
+            apiKey: process.env.BVN_API_KEY,
+          },
         }
       ).then((res: AxiosResponse) => {
         data = res.data?.response || null
@@ -877,6 +876,10 @@ export class AuthService {
         return this.response.sendError(res, StatusCodes.Unauthorized, "Profiles not matched")
       }
 
+      const tierTwoLevel = await this.prisma.level.findUnique({
+        where: { name: 'TIER_2' },
+      })
+
       await this.prisma.$transaction([
         this.prisma.profile.create({
           data: {
@@ -891,20 +894,34 @@ export class AuthService {
         }),
         this.prisma.user.update({
           where: { id: user.id },
-          data: { fullName: titleText(data.full_name) }
-        })
+          data: {
+            fullName: titleText(data.full_name),
+            level: {
+              connect: { id: tierTwoLevel.id },
+            },
+          },
+        }),
       ])
 
       res.on('finish', async () => {
-        await this.prisma.recipient.updateMany({
-          where: { fullname: user.fullName },
-          data: {
-            fullname: titleText(data.full_name)
-          }
-        })
+        await this.prisma.$transaction([
+          this.prisma.recipient.updateMany({
+            where: { fullname: user.fullName },
+            data: {
+              fullname: titleText(data.full_name),
+            },
+          }),
+          this.prisma.notification.create({
+            data: {
+              title: 'Account Upgrade!',
+              description: 'Your account has now been upgraded to Tier 2',
+              user: { connect: { id: user.id } },
+            }
+          })
+        ])
       })
 
-      this.response.sendSuccess(res, StatusCodes.Created, { message: "Successful", })
+      this.response.sendSuccess(res, StatusCodes.Created, { message: "Successful" })
     } catch (err) {
       this.misc.handleServerError(res, err, "Sorry, something happened on our end")
     }

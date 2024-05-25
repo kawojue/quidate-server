@@ -94,11 +94,6 @@ model Ip {
     currencyPlural String
 }
 
-model BlacklistedIP {
-    id String @id @default(auto()) @map("_id") @db.ObjectId
-    ip String @unique
-}
-
 model Level {
     id           String          @id @default(auto()) @map("_id") @db.ObjectId
     name         LeveLName       @unique @default(TIER_1)
@@ -133,6 +128,11 @@ model LevelConstraintTierThree {
     name                LeveLName @default(TIER_3)
     maxDailyWithdrawal  Float     @default(1000000000)
     maxSingleWithdrawal Float     @default(500000)
+}
+
+model BlacklistedIP {
+    id String @id @default(auto()) @map("_id") @db.ObjectId
+    ip String @unique
 }
 
 model WaitList {

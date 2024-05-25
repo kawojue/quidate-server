@@ -9,6 +9,7 @@ import { WalletController } from './wallet.controller'
 import { BitPowrSdkService } from 'lib/bitPowr.service'
 import { PriceConversionService } from 'lib/price-conversion'
 import { PaystackService } from 'lib/Paystack/paystack.service'
+import { EncryptionService } from 'lib/encryption.service'
 
 @Module({
   imports: [JwtModule, PassportModule.register({ defaultStrategy: 'jwt' })],
@@ -20,6 +21,7 @@ import { PaystackService } from 'lib/Paystack/paystack.service'
     PaystackService,
     ResponseService,
     BitPowrSdkService,
+    EncryptionService,
     PriceConversionService,
   ],
 })

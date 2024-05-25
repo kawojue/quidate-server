@@ -92,7 +92,7 @@ export class AuthService {
         },
       })
 
-      await Promise.all([
+      await this.prisma.$transaction([
         this.prisma.profile.create({
           data: {
             phone,

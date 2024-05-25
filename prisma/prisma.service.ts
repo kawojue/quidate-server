@@ -74,4 +74,30 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
         return { isAbleToUseBiometric: true }
     }
+
+    async getUserWallet(userId: string) {
+        return await this.wallet.findUnique({
+            where: { userId }
+        })
+    }
+
+    async getProfile(userId: string) {
+        return await this.profile.findUnique({
+            where: { userId }
+        })
+    }
+
+    async manageBalance(
+        userId: string, balField: 'ngnBalance' | 'usdBalance',
+        amount: number, action: 'increment' | 'decrement',
+    ) {
+        await this.wallet.update({
+            where: { userId },
+            data: {
+                [balField]: {
+                    [action]: amount
+                }
+            }
+        })
+    }
 }

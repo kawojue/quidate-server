@@ -5,13 +5,20 @@ import {
 } from 'class-validator'
 
 
-class TxSourceDTO {
+export class TxSourceDTO {
     @ApiProperty({
         example: 'USD',
         description: 'The user balance source of the transaction.'
     })
     @IsEnum(TransactionCurrency)
     tx_source: TransactionCurrency
+}
+
+export class GetReceiverDTO {
+    @ApiProperty({
+        examples: ['kawojue', '+2348131911964', '8131911964', '08131911964']
+    })
+    phoneOrUsername: string
 }
 
 export class AmountDTO {
@@ -22,7 +29,6 @@ export class AmountDTO {
     @IsNotEmpty()
     amount: number
 }
-
 
 export class InitiateWithdrawalDTO extends AmountDTO {
     @ApiProperty({
@@ -73,6 +79,11 @@ export class InitiateLocalTransferDTO extends AmountDTO {
     @IsString()
     @IsOptional()
     biometricToken?: string
+
+    @ApiProperty({
+        example: 'Phone number / username'
+    })
+    receiverId: string
 
     @ApiProperty({
         example: "food",

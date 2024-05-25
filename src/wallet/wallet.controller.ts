@@ -1,6 +1,5 @@
-import { Response } from 'express'
-import { AmountDTO } from './dto/tx.dto'
 import { Roles } from 'src/role.decorator'
+import { Request, Response } from 'express'
 import { AuthGuard } from '@nestjs/passport'
 import { Roles as Role } from '@prisma/client'
 import { MiscService } from 'lib/misc.service'
@@ -12,10 +11,13 @@ import { RolesGuard } from 'src/jwt/jwt-auth.guard'
 import { ResponseService } from 'lib/response.service'
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
 import { PriceConversionService } from 'lib/price-conversion'
-import { BankDetailsDTO, ValidateBankDTO } from './dto/bank.dto'
 import {
   Controller, Get, Post, Param, UseGuards, Req, Res, Query, Body
 } from '@nestjs/common'
+import { BankDetailsDTO, ValidateBankDTO } from './dto/bank.dto'
+import {
+  AmountDTO, GetReceiverDTO, InitiateLocalTransferDTO, TxSourceDTO
+} from './dto/tx.dto'
 
 @SkipThrottle()
 @ApiBearerAuth()
@@ -134,5 +136,26 @@ export class WalletController {
     this.response.sendSuccess(res, StatusCodes.OK, {
       data: { ngn, usd, fee, settlementAmount }
     })
+  }
+
+  @Get('/transfer/:receiverId')
+  @Roles(Role.user)
+  async getReceiver(
+    @Res() res: Response,
+    @Body() body: GetReceiverDTO,
+  ) {
+    await this.walletService.getReceiver(res, body)
+  }
+
+  @Post('/transfer/:receiverId')
+  @Roles(Role.user)
+  async initiateLocalTransfer(
+    @Req() req: Request,
+    @Res() res: Response,
+    @Query() query: TxSourceDTO,
+    @Body() body: InitiateLocalTransferDTO,
+    @Param('receiverId') receiverId: string,
+  ) {
+    await this.walletService.initiateLocalTransfer(req, res, receiverId, query, body)
   }
 }

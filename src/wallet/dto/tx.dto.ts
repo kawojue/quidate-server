@@ -50,13 +50,6 @@ export class InitiateWithdrawalDTO extends AmountDTO {
     @IsString()
     @IsOptional()
     biometricToken?: string
-
-    // @ApiProperty({
-    //     example: "656b3.."
-    // })
-    // @IsOptional()
-    // @IsString()
-    // linkedBankId: string
 }
 
 export class InitiateLocalTransferDTO extends AmountDTO {
@@ -79,11 +72,6 @@ export class InitiateLocalTransferDTO extends AmountDTO {
     @IsString()
     @IsOptional()
     biometricToken?: string
-
-    @ApiProperty({
-        example: 'Phone number / username'
-    })
-    receiverId: string
 
     @ApiProperty({
         example: "food",

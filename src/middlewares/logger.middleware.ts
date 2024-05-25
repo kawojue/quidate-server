@@ -1,7 +1,7 @@
 import { UAParser } from 'ua-parser-js'
 import { JwtService } from '@nestjs/jwt'
 import { formatSize } from 'helpers/transformer'
-import { getIpAddress } from 'helpers/getIpAddress'
+import { getIpAddress } from 'helpers/getIPAddress'
 import { PrismaService } from 'prisma/prisma.service'
 import { RateLimiterMemory } from 'rate-limiter-flexible'
 import { NextFunction, Request, Response } from 'express'

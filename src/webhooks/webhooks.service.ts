@@ -1,7 +1,7 @@
 import { Request, Response } from 'express'
 import { MiscService } from 'lib/misc.service'
 import { StatusCodes } from 'enums/statusCodes'
-import { getIpAddress } from 'helpers/getIpAddress'
+import { getIpAddress } from 'helpers/getIPAddress'
 import { PrismaService } from 'prisma/prisma.service'
 import { ResponseService } from 'lib/response.service'
 import { BitPowrSdkService } from 'lib/bitPowr.service'

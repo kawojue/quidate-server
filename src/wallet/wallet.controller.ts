@@ -16,7 +16,7 @@ import {
 } from '@nestjs/common'
 import { BankDetailsDTO, ValidateBankDTO } from './dto/bank.dto'
 import {
-  AmountDTO, GetReceiverDTO, InitiateLocalTransferDTO, TxSourceDTO
+  AmountDTO, GetReceiverDTO, InitiateLocalTransferDTO, InitiateWithdrawalDTO, TxSourceDTO
 } from './dto/tx.dto'
 
 @SkipThrottle()
@@ -86,6 +86,17 @@ export class WalletController {
     await this.walletService.fundWallet(res, req.user, body)
   }
 
+  @Post('/withdraw')
+  async initiateWithdrawal(
+    @Req() req: Request,
+    @Res() res: Response,
+    @Query() query: TxSourceDTO,
+    @Body() body: InitiateWithdrawalDTO,
+    @Param('linkedBankId') linkedBankId: string,
+  ) {
+    await this.walletService.initiateWithdrawal(req, res, linkedBankId, query, body)
+  }
+
   @Roles('user')
   @Post('/assign-address')
   async assignAddresses(@Res() res: Response, @Req() req: IRequest) {
@@ -100,6 +111,26 @@ export class WalletController {
     this.response.sendSuccess(res, StatusCodes.OK, {
       data: { ngn, usd }
     })
+  }
+
+  @Post('/ngn-usd')
+  @Roles(Role.user)
+  async sendInternalNGNTOUSD(
+    @Res() res: Response,
+    @Req() req: IRequest,
+    @Body() body: AmountDTO
+  ) {
+    await this.walletService.sendInternalNGNTOUSD(res, req.user, body)
+  }
+
+  @Post('/usd-usd')
+  @Roles(Role.user)
+  async sendInternalUSDTONGN(
+    @Res() res: Response,
+    @Req() req: IRequest,
+    @Body() body: AmountDTO
+  ) {
+    await this.walletService.sendInternalUSDTONGN(res, req.user, body)
   }
 
   @Get('/usd-ngn')

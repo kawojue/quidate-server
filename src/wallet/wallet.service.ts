@@ -14,7 +14,7 @@ import { toLowerCase, toUpperCase } from 'helpers/transformer'
 import { PaystackService } from 'lib/Paystack/paystack.service'
 import { BankDetailsDTO, ValidateBankDTO } from './dto/bank.dto'
 import {
-  AmountDTO, GetReceiverDTO, InitiateLocalTransferDTO, TxSourceDTO
+  AmountDTO, GetReceiverDTO, InitiateLocalTransferDTO, InitiateWithdrawalDTO, TxSourceDTO
 } from './dto/tx.dto'
 import {
   TransactionCurrency, TransactionSource, TransactionType, TransferStatus
@@ -56,6 +56,232 @@ export class WalletService {
     }
 
     this.response.sendSuccess(res, StatusCodes.OK, { data: bank })
+  }
+
+  async initiateWithdrawal(
+    req: Request,
+    res: Response,
+    linkedBankId: string,
+    { tx_source }: TxSourceDTO,
+    {
+      biometricToken, amount, pin,
+    }: InitiateWithdrawalDTO
+  ) {
+    try {
+      // @ts-ignore
+      const userId = req.user?.sub
+
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId }
+      })
+
+      const profile = await this.prisma.getProfile(userId)
+      const wallet = await this.prisma.getUserWallet(userId)
+
+      const linkedBank = await this.prisma.linkedBank.findUnique({
+        where: { id: linkedBankId }
+      })
+
+      if (!linkedBank) {
+        return this.response.sendError(res, StatusCodes.NotFound, "Linked bank not found")
+      }
+
+      if (!biometricToken && !pin) {
+        return this.response.sendError(res, StatusCodes.BadRequest, 'PIN or Biometric is required')
+      }
+
+      amount = Number(amount)
+      const MIN_AMOUNT = tx_source === 'NGN' ? 100 : 5
+      if (amount < MIN_AMOUNT) {
+        return this.response.sendError(res, StatusCodes.BadRequest, `Minimum amount is ${tx_source === 'NGN' ? '₦100.00' : '$5.00'}`)
+      }
+
+      if (!profile.pin) {
+        return this.response.sendError(res, StatusCodes.BadRequest, "Create a transaction PIN")
+      }
+
+      if (pin) {
+        const pinTrialsKey = `pinTrials:${userId}`
+        const pinTrials = await this.prisma.cache.findUnique({
+          where: {
+            key: pinTrialsKey
+          },
+        })
+
+        let maxPinTrials = 5
+        let resetInterval = 1_800_000
+        const currentTime = Date.now()
+
+        if (pinTrials && pinTrials.value >= maxPinTrials && currentTime - pinTrials.createdAt.getTime() < resetInterval) {
+          this.response.sendError(res, StatusCodes.Unauthorized, "Maximum PIN trials exceeded")
+
+          maxPinTrials = 3
+          resetInterval += 3_600_000
+          await this.prisma.cache.update({
+            where: {
+              key: pinTrialsKey
+            },
+            data: {
+              createdAt: new Date(currentTime),
+            },
+          })
+
+          return
+        }
+
+        const isMatch = await this.encryption.compare(pin, profile.pin)
+        if (!isMatch) {
+          const cache = await this.prisma.cache.upsert({
+            where: {
+              key: pinTrialsKey
+            },
+            create: {
+              key: pinTrialsKey,
+              value: 1,
+              createdAt: new Date(currentTime),
+            },
+            update: {
+              value: {
+                increment: 1
+              },
+              createdAt: new Date(currentTime),
+            },
+          })
+
+          return this.response.sendError(res, StatusCodes.Unauthorized, `Invalid PIN. ${maxPinTrials - cache.value} trial(s) left`)
+        }
+
+        if (pinTrials) {
+          await this.prisma.cache.delete({
+            where: {
+              key: pinTrialsKey
+            },
+          })
+        }
+      }
+
+      if (biometricToken) {
+        const decodedToken = await this.misc.validateAndDecodeToken(biometricToken)
+        const sub = decodedToken?.sub
+
+        if (userId !== sub) {
+          return this.response.sendError(res, StatusCodes.Unauthorized, 'Invalid Biometric Token received')
+        }
+
+        const checkings = await this.prisma.biometricCheck(userId, 'Tx')
+        if (!checkings.isAbleToUseBiometric) {
+          return this.response.sendError(res, StatusCodes.Unauthorized, checkings.reason)
+        }
+      }
+
+      const { price: amountInNGN, rate: dollarRate } = tx_source === 'USD' ? await this.conversion.convert_currency(amount, 'USD_TO_NGN') : { price: amount, rate: null }
+      const amountInKobo = amountInNGN * 100
+      const fee = await this.misc.calculateFees(amount, tx_source)
+      const totalFeeInNGN = tx_source === "NGN" ? fee.totalFee : (await this.conversion.convert_currency(fee.totalFee, "USD_TO_NGN")).price
+      const amountPlusFee = amount + fee.totalFee
+      const deductedAmountInNGN = amountInNGN + totalFeeInNGN
+
+      const balance = tx_source === 'NGN' ? wallet.ngnBalance : wallet.usdBalance
+      if (amountPlusFee > balance) {
+        return this.response.sendError(res, StatusCodes.UnprocessableEntity, "Insufficient Balance")
+      }
+
+      const { data: details } = await this.paystack.resolveAccount(linkedBank.accountNumber, linkedBank.bankCode)
+
+      const { data: recepient } = await this.paystack.createRecipient({
+        account_number: details.account_number,
+        bank_code: linkedBank.bankCode,
+        currency: 'NGN',
+        name: details.account_name,
+        type: 'nuban'
+      })
+
+      const { data: transfer } = await this.paystack.initiateTransfer({
+        recipient: recepient.recipient_code,
+        source: 'balance',
+        reason: `Quidate - ${user.fullName}`,
+        amount: amountInKobo,
+        reference: `transfer-${userId}-${genRandomCode()}`
+      })
+
+      await Promise.all([
+        this.prisma.manageBalance(userId, tx_source === 'NGN' ? 'ngnBalance' : 'usdBalance', tx_source === 'NGN' ? deductedAmountInNGN : amountPlusFee, 'decrement'),
+
+        this.prisma.transactionHistory.create({
+          data: {
+            dollarRate,
+            ip: getIpAddress(req),
+            source: 'fiat',
+            type: 'DISBURSEMENT',
+            amount: amountInNGN,
+            totalFee: totalFeeInNGN,
+            ref: transfer.reference,
+            outward_source: tx_source,
+            paystackFee: fee.paystackFee,
+            processingFee: fee.processingFee,
+            currency: transfer.currency,
+            narration: transfer.reason,
+            transferCode: transfer.transfer_code,
+            settlementAmount: deductedAmountInNGN,
+            destinationBankCode: recepient.details.bank_code,
+            destinationBankName: recepient.details.bank_name,
+            destinationAccountName: recepient.details.account_name,
+            destinationAccountNumber: recepient.details.account_number,
+            sourceType: transfer.source,
+            recipient: transfer.recipient as number,
+            status: transfer.status.toUpperCase() as TransferStatus,
+            createdAt: new Date(transfer.createdAt),
+            user: { connect: { id: userId } }
+          }
+        })
+      ])
+
+      res.on('finish', async () => {
+        await this.prisma.$transaction([
+          this.prisma.recipient.upsert({
+            where: {
+              userId,
+              recipient_code: recepient.recipient_code,
+            },
+            create: {
+              account_name: recepient.details.account_name,
+              account_number: recepient.details.account_number,
+              type: recepient.type,
+              recipient_code: recepient.recipient_code,
+              recipient_id: recepient.id,
+              domain: recepient.domain,
+              bank_code: recepient.details.bank_code,
+              bank_name: recepient.details.bank_name,
+              authorization_code: recepient.details.authorization_code,
+              createdAt: new Date(recepient.createdAt),
+              updatedAt: new Date(),
+              integration: recepient.integration,
+              user: { connect: { id: userId } }
+            },
+            update: { updatedAt: new Date() }
+          }),
+          this.prisma.notification.create({
+            data: {
+              reference: transfer.reference,
+              title: 'Transaction Successful',
+              description: `A total fee of ${tx_source === 'NGN' ? `₦${fee.totalFee}` : `$${fee.totalFee}`} was charged.`,
+              user: {
+                connect: {
+                  id: userId
+                }
+              }
+            }
+          })
+        ])
+      })
+
+      this.response.sendSuccess(res, StatusCodes.Created, {
+        data: { reference: transfer.reference },
+        message: "New Transaction has been initiated",
+      })
+    } catch (err) {
+      this.misc.handlePaystackAndServerError(res, err)
+    }
   }
 
   async initiateLocalTransfer(
@@ -159,8 +385,7 @@ export class WalletService {
             },
           })
 
-          this.response.sendError(res, StatusCodes.Unauthorized, `Invalid PIN. ${maxPinTrials - cache.value} trial(s) left`)
-          return
+          return this.response.sendError(res, StatusCodes.Unauthorized, `Invalid PIN. ${maxPinTrials - cache.value} trial(s) left`)
         }
 
         if (pinTrials) {
@@ -211,17 +436,10 @@ export class WalletService {
         currency: tx_source === 'NGN' ? 'NGN' : 'USD' as TransactionCurrency,
       }
 
-      if (tx_source === 'NGN') {
-        await Promise.all([
-          this.prisma.manageBalance(user.id, 'ngnBalance', amount, 'decrement'),
-          this.prisma.manageBalance(receiver.id, 'ngnBalance', amount, 'increment')
-        ])
-      } else {
-        await Promise.all([
-          this.prisma.manageBalance(user.id, 'usdBalance', amount, 'decrement'),
-          this.prisma.manageBalance(receiver.id, 'usdBalance', amount, 'increment')
-        ])
-      }
+      await Promise.all([
+        this.prisma.manageBalance(user.id, tx_source === "NGN" ? 'ngnBalance' : 'usdBalance', amount, 'decrement'),
+        this.prisma.manageBalance(receiver.id, tx_source === "NGN" ? 'ngnBalance' : 'usdBalance', amount, 'increment')
+      ])
 
       await this.prisma.$transaction([
         this.prisma.recipient.upsert({
@@ -344,6 +562,8 @@ export class WalletService {
       if (!user) {
         return res.status(StatusCodes.NotFound).json({ message: "Receiver not found" })
       }
+
+      this.response.sendSuccess(res, StatusCodes.OK, { data: user })
     } catch (err) {
       this.misc.handleServerError(res, err, "Error fetching receiver")
     }
@@ -427,10 +647,10 @@ export class WalletService {
     }
   }
 
-  async withDrawInternalUSDTONGN(
+  async sendInternalUSDTONGN(
     res: Response,
     { sub }: ExpressUser,
-    amount: number
+    { amount }: AmountDTO,
   ) {
     try {
       if (0 >= amount) {
@@ -438,15 +658,12 @@ export class WalletService {
       }
 
       const wallet = await this.prisma.wallet.findUnique({
-        where: {
-          userId: sub
-        }
+        where: { userId: sub }
       })
 
       amount = Number(amount)
       if (amount > wallet.usdBalance) {
-        this.response.sendError(res, StatusCodes.UnprocessableEntity, 'Insufficient USD Balance')
-        return
+        return this.response.sendError(res, StatusCodes.UnprocessableEntity, 'Insufficient USD Balance')
       }
 
       const fee = this.misc.calculateUSDFee(amount)
@@ -465,11 +682,7 @@ export class WalletService {
             type: 'CONVERSION',
             channel: 'internal',
             dollarRate: rate,
-            user: {
-              connect: {
-                id: sub
-              }
-            }
+            user: { connect: { id: sub } }
           }
         }),
         this.prisma.wallet.update({
@@ -693,11 +906,11 @@ export class WalletService {
         where: { userId }
       })
 
-      if (linkedBanksCount > 0) {
+      if (linkedBanksCount === 0) {
         return this.response.sendError(res, StatusCodes.NotFound, "Link a primary bank account before assigning addresses")
       }
 
-      if (walletAddressesCount > 0) {
+      if (walletAddressesCount === 0) {
         return this.response.sendError(res, StatusCodes.Conflict, "You have existing wallet addresses")
       }
 

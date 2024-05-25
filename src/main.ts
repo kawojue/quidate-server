@@ -19,7 +19,6 @@ async function bootstrap() {
       'https://quidate-server-staging.up.railway.app',
       'https://quidate-server-production.up.railway.app',
     ],
-    credentials: true,
     optionsSuccessStatus: 200,
     methods: 'GET,PATCH,POST,PUT,DELETE',
   })
@@ -30,7 +29,7 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe())
 
   const swaggerOptions = new DocumentBuilder()
-    .setTitle('Quidate Finance API')
+    .setTitle('Quidate API')
     .setVersion('2.0')
     .addServer('https://quidate-server-staging.up.railway.app', 'Staging')
     .addServer('https://quidate-server-production.up.railway.app', 'Production')
@@ -39,7 +38,7 @@ async function bootstrap() {
     .build()
 
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerOptions)
-  SwaggerModule.setup('api-docs', app, swaggerDocument)
+  SwaggerModule.setup('docs', app, swaggerDocument)
 
   try {
     await app.listen(PORT)

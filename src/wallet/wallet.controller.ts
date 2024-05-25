@@ -92,30 +92,6 @@ export class WalletController {
     await this.walletService.assignAddresses(res, req.user)
   }
 
-  @Roles('admin', 'moderator')
-  @Get('/mainwallet/account')
-  async fetchAllMainWallets(@Res() res: Response) {
-    await this.walletService.fetchAllMainWallets(res)
-  }
-
-  @Roles('admin', 'moderator')
-  @Get('/mainwallet/account/:uid')
-  async findMainWalletByAccountId(@Param('uid') uid: string, @Res() res: Response) {
-    await this.walletService.findMainWalletByAccountId(res, uid)
-  }
-
-  @Roles('admin', 'moderator')
-  @Get('/address')
-  async fetchAllAddresses(@Res() res: Response) {
-    await this.walletService.fetchAllAddresses(res)
-  }
-
-  @Roles('admin', 'moderator')
-  @Get('/address/:accountId')
-  async fetchAddressesByAccountId(@Res() res: Response, @Param('accountId') accountId: string) {
-    await this.walletService.fetchAddressesByAccountId(res, accountId)
-  }
-
   @Get('/ngn-usd')
   async internalNGNTOUSD(@Res() res: Response, @Query() { amount }: AmountDTO) {
     const ngn = Number(amount)

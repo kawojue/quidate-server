@@ -12,12 +12,10 @@ async function bootstrap() {
   app.enableCors({
     origin: [
       `http://localhost:3000`,
+      `http://localhost:3001`,
       'https://quidate.finance',
       `http://localhost:${PORT}`,
-      'https://quidate-prod.up.railway.app',
-      'https://quidate-staging.up.railway.app',
-      'https://quidate-server-staging.up.railway.app',
-      'https://quidate-server-production.up.railway.app',
+      'https://quidate-server-v2.onrender.com'
     ],
     optionsSuccessStatus: 200,
     methods: 'GET,PATCH,POST,PUT,DELETE',
@@ -31,8 +29,7 @@ async function bootstrap() {
   const swaggerOptions = new DocumentBuilder()
     .setTitle('Quidate API')
     .setVersion('2.0')
-    .addServer('https://quidate-server-staging.up.railway.app', 'Staging')
-    .addServer('https://quidate-server-production.up.railway.app', 'Production')
+    .addServer('https://quidate-server-v2.onrender.com', 'Staging')
     .addServer(`http://localhost:${PORT}`, 'Local')
     .addBearerAuth()
     .build()

@@ -1,5 +1,5 @@
-import { StatusCodes } from 'enums/StatusCodes'
 import { Response, Request } from 'express'
+import { StatusCodes } from 'enums/statusCodes'
 import { SkipThrottle } from '@nestjs/throttler'
 import { WebhooksService } from './webhooks.service'
 import { Controller, HttpException, Post, Req, Res } from '@nestjs/common'

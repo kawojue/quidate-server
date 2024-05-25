@@ -1,6 +1,6 @@
 import { Response, Request } from 'express'
 import { Injectable } from '@nestjs/common'
-import { StatusCodes } from 'enums/StatusCodes'
+import { StatusCodes } from 'enums/statusCodes'
 import { PlunkService } from 'lib/plunk.service'
 import { genRandomCode } from 'helpers/generator'
 import { CreateInvoiceDto } from './dto/create.dto'

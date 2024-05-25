@@ -1,7 +1,7 @@
 import { Request, Response } from 'express'
 import { Injectable } from '@nestjs/common'
 import { MiscService } from 'lib/misc.service'
-import { StatusCodes } from 'enums/StatusCodes'
+import { StatusCodes } from 'enums/statusCodes'
 import { FundWalletDTO } from './dto/deposit.dto'
 import { genRandomCode } from 'helpers/generator'
 import { getIpAddress } from 'helpers/getIPAddress'
@@ -14,11 +14,11 @@ import { toLowerCase, toUpperCase } from 'helpers/transformer'
 import { PaystackService } from 'lib/Paystack/paystack.service'
 import { BankDetailsDTO, ValidateBankDTO } from './dto/bank.dto'
 import {
-  AmountDTO, GetReceiverDTO, InitiateLocalTransferDTO, InitiateWithdrawalDTO, TxSourceDTO
-} from './dto/tx.dto'
-import {
   TransactionCurrency, TransactionSource, TransactionType, TransferStatus
 } from '@prisma/client'
+import {
+  AmountDTO, GetReceiverDTO, InitiateLocalTransferDTO, InitiateWithdrawalDTO, TxSourceDTO
+} from './dto/tx.dto'
 
 @Injectable()
 export class WalletService {
@@ -238,6 +238,14 @@ export class WalletService {
 
       res.on('finish', async () => {
         await this.prisma.$transaction([
+          this.prisma.wallet.update({
+            where: { userId },
+            data: {
+              lastWithdrewAt: new Date(),
+              lasCurrencyEffect: tx_source,
+              lastAmountWithdrawn: tx_source === 'NGN' ? deductedAmountInNGN : amountPlusFee
+            }
+          }),
           this.prisma.recipient.upsert({
             where: {
               userId,
@@ -463,6 +471,14 @@ export class WalletService {
 
       res.on('finish', async () => {
         await this.prisma.$transaction([
+          this.prisma.wallet.update({
+            where: { userId },
+            data: { lasCurrencyEffect: tx_source, }
+          }),
+          this.prisma.wallet.update({
+            where: { userId: receiver.id },
+            data: { lasCurrencyEffect: tx_source }
+          }),
           this.prisma.transactionHistory.create({
             data: {
               ip,

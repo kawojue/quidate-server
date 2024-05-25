@@ -1,7 +1,15 @@
+import {
+  TransactionType, TransactionSource,
+  TransactionCurrency, TransferStatus,
+} from '@prisma/client'
 import { Request, Response } from 'express'
 import { Injectable } from '@nestjs/common'
 import { MiscService } from 'lib/misc.service'
 import { StatusCodes } from 'enums/statusCodes'
+import {
+  InitiateLocalTransferDTO, GetReceiverDTO,
+  AmountDTO, InitiateWithdrawalDTO, TxSourceDTO,
+} from './dto/tx.dto'
 import { FundWalletDTO } from './dto/deposit.dto'
 import { genRandomCode } from 'helpers/generator'
 import { getIpAddress } from 'helpers/getIPAddress'
@@ -13,12 +21,6 @@ import { PriceConversionService } from 'lib/price-conversion'
 import { toLowerCase, toUpperCase } from 'helpers/transformer'
 import { PaystackService } from 'lib/Paystack/paystack.service'
 import { BankDetailsDTO, ValidateBankDTO } from './dto/bank.dto'
-import {
-  TransactionCurrency, TransactionSource, TransactionType, TransferStatus
-} from '@prisma/client'
-import {
-  AmountDTO, GetReceiverDTO, InitiateLocalTransferDTO, InitiateWithdrawalDTO, TxSourceDTO
-} from './dto/tx.dto'
 
 @Injectable()
 export class WalletService {
@@ -91,9 +93,9 @@ export class WalletService {
       }
 
       amount = Number(amount)
-      const MIN_AMOUNT = tx_source === 'NGN' ? 100 : 5
+      const MIN_AMOUNT = tx_source === 'NGN' ? 100 : 3
       if (amount < MIN_AMOUNT) {
-        return this.response.sendError(res, StatusCodes.BadRequest, `Minimum amount is ${tx_source === 'NGN' ? '₦100.00' : '$5.00'}`)
+        return this.response.sendError(res, StatusCodes.BadRequest, `Minimum amount is ${tx_source === 'NGN' ? '₦100.00' : '$3.00'}`)
       }
 
       if (!profile.pin) {
@@ -432,16 +434,16 @@ export class WalletService {
         narration,
         totalFee: 0,
         channel: 'internal',
+        currency: tx_source,
         settlementAmount: amount,
         outward_source: tx_source,
         broadcastedAt: currentDate,
         transferCode: transfer_code,
+        sourceAccountName: user.fullName,
         source: 'fiat' as TransactionSource,
         status: 'SUCCESS' as TransferStatus,
         type: 'DISBURSEMENT' as TransactionType,
-        sourceAccountName: user.fullName,
         destinationAccountName: receiver.fullName,
-        currency: tx_source === 'NGN' ? 'NGN' : 'USD' as TransactionCurrency,
       }
 
       await Promise.all([
@@ -489,12 +491,12 @@ export class WalletService {
               type: 'DEPOSIT',
               status: 'COMPLETED',
               channel: 'internal',
+              currency: tx_source,
               inward_source: tx_source,
               settlementAmount: amount,
               sourceAccountName: user.fullName,
               destinationAccountName: receiver.fullName,
               narration: narration || `Quidate - ${user.username}`,
-              currency: tx_source === 'NGN' ? 'NGN' : 'USD' as TransactionCurrency,
               user: { connect: { id: receiver.id } }
             }
           }),
@@ -576,7 +578,7 @@ export class WalletService {
       const user = userByUsername || userByPhone
 
       if (!user) {
-        return res.status(StatusCodes.NotFound).json({ message: "Receiver not found" })
+        return this.response.sendError(res, StatusCodes.NotFound, "Receiver not found")
       }
 
       this.response.sendSuccess(res, StatusCodes.OK, { data: user })
@@ -618,17 +620,11 @@ export class WalletService {
             source: 'fiat',
             channel: 'internal',
             type: 'CONVERSION',
-            user: {
-              connect: {
-                id: sub
-              }
-            }
+            user: { connect: { id: sub } }
           }
         }),
         this.prisma.wallet.update({
-          where: {
-            userId: sub
-          },
+          where: { userId: sub },
           data: {
             usdBalance: {
               increment: dollarAmount
@@ -646,11 +642,7 @@ export class WalletService {
             title: 'Conversion - NGN to USD',
             description: `You've successfully converted ₦${amount.toFixed(2)} to $${dollarAmount.toFixed(2)}. Zero fee`,
             reference: hist.ref,
-            user: {
-              connect: {
-                id: sub
-              }
-            }
+            user: { connect: { id: sub } }
           }
         })
       })
@@ -669,8 +661,8 @@ export class WalletService {
     { amount }: AmountDTO,
   ) {
     try {
-      if (0 >= amount) {
-        return this.response.sendError(res, StatusCodes.BadRequest, 'Invalid amount')
+      if (amount <= 0) {
+        return this.response.sendError(res, StatusCodes.BadRequest, 'Amount is too low')
       }
 
       const wallet = await this.prisma.wallet.findUnique({
@@ -702,9 +694,7 @@ export class WalletService {
           }
         }),
         this.prisma.wallet.update({
-          where: {
-            userId: sub
-          },
+          where: { userId: sub },
           data: {
             usdBalance: {
               decrement: amount
@@ -722,11 +712,7 @@ export class WalletService {
             title: 'Conversion - USD to NGN',
             description: `You converted $${amount.toFixed(2)} to ₦${ngnAmount.toFixed(2)}. $${fee.toFixed(2)} was charged.`,
             reference: hist.ref,
-            user: {
-              connect: {
-                id: sub
-              }
-            }
+            user: { connect: { id: sub } }
           }
         })
       })
@@ -992,16 +978,14 @@ export class WalletService {
         createdAddresses.push(createdAddressesData)
       }
 
-      await this.prisma.notification.create({
-        data: {
-          title: 'Crypto Address - Start Making Transaction',
-          description: "Addresses have been assigned to your account. Start converting your crypto to cash.",
-          user: {
-            connect: {
-              id: userId
-            }
+      res.on('finish', async () => {
+        await this.prisma.notification.create({
+          data: {
+            title: 'Crypto Address - Start Making Transaction',
+            description: "Addresses have been assigned to your account. Start converting your crypto to cash.",
+            user: { connect: { id: userId } }
           }
-        }
+        })
       })
 
       this.response.sendSuccess(res, StatusCodes.Created, {

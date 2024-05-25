@@ -1,5 +1,8 @@
+import {
+    IsEnum, IsNotEmpty, IsOptional, IsString
+} from 'class-validator'
 import { ApiProperty } from '@nestjs/swagger'
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator'
+import { TransactionCurrency } from '@prisma/client'
 
 export class SearchDto {
     @ApiProperty({
@@ -32,10 +35,11 @@ export class FetchProductsDto extends InfiniteScrollDto {
 
 export class FXRateDTO {
     @ApiProperty({
-        examples: ['USD', 'NGN']
+        enum: TransactionCurrency
     })
     @IsNotEmpty()
-    currencyCode: string
+    @IsEnum(TransactionCurrency)
+    currencyCode: TransactionCurrency
 
     @ApiProperty({
         example: 20

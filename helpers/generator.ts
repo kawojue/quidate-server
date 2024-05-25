@@ -12,15 +12,12 @@ export const generateOTP = (length: number = 6): IGenOTP => {
         totp += digits[Math.floor(Math.random() * length)]
     }
 
-    const currentDate: Date = new Date()
-    const expiryDate: Date = new Date(
-        currentDate.setMinutes(currentDate.getMinutes() + 5)
+    const now: Date = new Date()
+    const totp_expiry: Date = new Date(
+        now.setMinutes(now.getMinutes() + 5)
     )
 
-    return {
-        totp,
-        totp_expiry: expiryDate
-    }
+    return { totp, totp_expiry }
 }
 
 export const genRandomCode = (): string => {

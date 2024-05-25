@@ -485,6 +485,7 @@ enum TransferStatus {
 
 enum TransactionType {
     DEPOSIT
+    RESOURCE
     DISBURSEMENT
     CONVERSION
 }

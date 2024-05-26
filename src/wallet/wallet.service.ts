@@ -310,11 +310,14 @@ export class WalletService {
     try {
       // @ts-ignore
       const userId = req.user?.sub
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId }
-      })
-      const wallet = await this.prisma.getUserWallet(userId)
-      const profile = await this.prisma.getProfile(userId)
+
+      const [user, profile, wallet] = await Promise.all([
+        this.prisma.user.findUnique({
+           where: { id: userId }
+        }),
+        this.prisma.getProfile(userId),
+        this.prisma.getUserWallet(userId),
+      ])
 
       if (!biometricToken && !pin) {
         return this.response.sendError(res, StatusCodes.BadRequest, 'PIN or Biometric is required')

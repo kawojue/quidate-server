@@ -21,9 +21,7 @@ export class Consumer {
 
         if (!cache) return null
 
-        const { access_token, expires_in, updatedAt } = cache
-
-        return { access_token, expires_in, updatedAt }
+        return cache
     }
 
     private setAuthorizationHeader(access_token: string) {
@@ -37,7 +35,7 @@ export class Consumer {
             let access_token = token?.access_token
 
             if (
-                !token?.access_token ||
+                !access_token ||
                 (token?.expires_in && Date.now() > (new Date(token.updatedAt).getTime() + token.expires_in * 1000))
             ) {
                 const response: AxiosResponse<Reloadly> = await axios.post(

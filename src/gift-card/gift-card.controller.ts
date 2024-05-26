@@ -1,10 +1,18 @@
-import { ApiTags } from '@nestjs/swagger'
-import { Response, Request } from 'express'
 import {
-  FetchProductsDto, FXRateDTO, InfiniteScrollDto, SearchDto,
+  Body, Controller, Get, Param,
+  Post, Query, Req, Res, UseGuards,
+} from '@nestjs/common'
+import { Roles } from '@prisma/client'
+import {
+  InfiniteScrollDto, PurchaseGiftCardDTO,
+  FetchProductsDto, FXRateDTO, SearchDto,
 } from './dto/gift-card.dto'
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
+import { Response, Request } from 'express'
+import { AuthGuard } from '@nestjs/passport'
+import { Roles as Role } from 'src/role.decorator'
+import { RolesGuard } from 'src/jwt/jwt-auth.guard'
 import { GiftCardService } from './gift-card.service'
-import { Body, Controller, Get, Param, Query, Res } from '@nestjs/common'
 
 @ApiTags("Gift Card")
 @Controller('gift-card')
@@ -59,5 +67,17 @@ export class GiftCardController {
     @Query() query: FXRateDTO
   ) {
     await this.giftCardService.fxRate(res, query)
+  }
+
+  @ApiBearerAuth()
+  @Role(Roles.user)
+  @Post('/purchase')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  async purchaseGiftCard(
+    @Req() req: IRequest,
+    @Res() res: Response,
+    @Body() body: PurchaseGiftCardDTO,
+  ) {
+    await this.giftCardService.purchaseGiftCard(res, req.user, body)
   }
 }

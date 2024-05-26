@@ -23,7 +23,7 @@ interface GiftCardProduct {
     supportsPreOrder: boolean
     senderFee: number
     discountPercentage: number
-    denominationType: "FIXED" | "FLEXIBLE"
+    denominationType: "FIXED" | "RANGE"
     recipientCurrencyCode: string
     minRecipientDenomination: number | null
     maxRecipientDenomination: number | null
@@ -65,6 +65,34 @@ interface GiftCardDiscountProduct {
 
 interface GiftCardDiscountProducts {
     content: GiftCardDiscountProduct[]
+}
+
+interface GiftCardTransaction {
+    transactionId: number
+    amount: number
+    discount: number
+    currencyCode: string
+    fee: number
+    recipientEmail: string
+    customIdentifier: string
+    status: string
+    product: {
+        productId: number
+        productName: string
+        countryCode: string
+        quantity: number
+        unitPrice: number
+        totalPrice: number
+        currencyCode: string
+        brand: {
+            brandId: number
+            brandName: string
+        }
+    }
+    smsFee: number
+    recipientPhone: number
+    transactionCreatedTime: string
+    preOrdered: boolean
 }
 
 interface Brand {

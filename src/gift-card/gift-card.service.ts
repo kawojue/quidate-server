@@ -6,8 +6,9 @@ import { PrismaService } from 'prisma/prisma.service'
 import { ResponseService } from 'lib/response.service'
 import { Consumer } from 'lib/Reloadly/reloadly.service'
 import {
-    FetchProductsDto, FXRateDTO, InfiniteScrollDto, SearchDto
+    FetchProductsDto, FXRateDTO, InfiniteScrollDto, PurchaseGiftCardDTO, SearchDto
 } from './dto/gift-card.dto'
+import { genRandomCode } from 'helpers/generator'
 
 @Injectable()
 export class GiftCardService {
@@ -55,7 +56,11 @@ export class GiftCardService {
 
 
     async fetchProductById(res: Response, productId: string) {
-        const product = await this.consumer.sendRequest<GiftCardProduct>('GET', `products/${productId}`)
+        const product = await this.consumer.sendRequest<GiftCardProduct>('GET', `products/${productId}`) || null
+
+        if (!product) {
+            return this.response.sendError(res, StatusCodes.NotFound, "Product not found")
+        }
 
         this.response.sendSuccess(res, StatusCodes.OK, { data: product })
     }
@@ -111,4 +116,49 @@ export class GiftCardService {
 
         this.response.sendSuccess(res, StatusCodes.OK, { data: rate })
     }
+
+    async purchaseGiftCard(
+        res: Response,
+        { sub }: ExpressUser,
+        {
+            quantity, productId, unitPrice
+        }: PurchaseGiftCardDTO
+    ) {
+        try {
+            const product = await this.consumer.sendRequest<GiftCardProduct>('GET', `products/${productId}`) || null
+
+            if (!product) {
+                return this.response.sendError(res, StatusCodes.NotFound, "Product not found")
+            }
+
+            if (product.denominationType === "FIXED") {
+                if (!product.fixedRecipientDenominations.includes(unitPrice)) {
+                    return this.response.sendError(res, StatusCodes.BadRequest, "Invalid unit price")
+                }
+            }
+
+            if (product.denominationType === "RANGE") {
+                if (unitPrice > product.maxRecipientDenomination || unitPrice < product.minRecipientDenomination) {
+                    return this.response.sendError(res, StatusCodes.BadRequest, "Invalid unit price")
+                }
+            }
+
+            const user = await this.prisma.user.findUnique({
+                where: { id: sub }
+            })
+
+            const payload = {
+                senderName: user.fullName,
+                recipientEmail: user.email,
+                unitPrice, productId, quantity,
+                customIdentifier: `${sub}-${genRandomCode()}`
+            }
+
+            const order = await this.consumer.sendRequest<GiftCardTransaction>('POST', '', payload)
+        } catch (err) {
+
+        }
+    }
+
+    async redeemInstruction() { }
 }

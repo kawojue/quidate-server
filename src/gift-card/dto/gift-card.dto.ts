@@ -1,8 +1,8 @@
-import {
-    IsEnum, IsNotEmpty, IsOptional, IsString
-} from 'class-validator'
 import { ApiProperty } from '@nestjs/swagger'
 import { TransactionCurrency } from '@prisma/client'
+import {
+    IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString
+} from 'class-validator'
 
 export class SearchDto {
     @ApiProperty({
@@ -46,4 +46,27 @@ export class FXRateDTO {
     })
     @IsNotEmpty()
     amount: number
+}
+
+export class PurchaseGiftCardDTO {
+    @ApiProperty({
+        example: 2
+    })
+    @IsNumber()
+    @IsNotEmpty()
+    quantity: number
+
+    @ApiProperty({
+        example: '123'
+    })
+    @IsNumber()
+    @IsNotEmpty()
+    productId: number
+
+    @ApiProperty({
+        example: 12.99
+    })
+    @IsNumber()
+    @IsNotEmpty()
+    unitPrice: number
 }

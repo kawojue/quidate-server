@@ -1,7 +1,3 @@
-import {
-  TransactionType, TransactionSource,
-  TransactionCurrency, TransferStatus,
-} from '@prisma/client'
 import { Request, Response } from 'express'
 import { Injectable } from '@nestjs/common'
 import { MiscService } from 'lib/misc.service'
@@ -13,6 +9,9 @@ import {
 import { FundWalletDTO } from './dto/deposit.dto'
 import { genRandomCode } from 'helpers/generator'
 import { getIpAddress } from 'helpers/getIPAddress'
+import {
+  TransactionType, TransactionSource, TransferStatus,
+} from '@prisma/client'
 import { PrismaService } from 'prisma/prisma.service'
 import { ResponseService } from 'lib/response.service'
 import { BitPowrSdkService } from 'lib/bitPowr.service'
@@ -65,23 +64,38 @@ export class WalletService {
     res: Response,
     linkedBankId: string,
     { tx_source }: TxSourceDTO,
-    {
-      biometricToken, amount, pin,
-    }: InitiateWithdrawalDTO
+    { biometricToken, amount, pin }: InitiateWithdrawalDTO
   ) {
     try {
       // @ts-ignore
       const userId = req.user?.sub
 
       const user = await this.prisma.user.findUnique({
-        where: { id: userId }
+        where: { id: userId },
+        include: {
+          level: {
+            include: {
+              constraints: true,
+            },
+          },
+        },
       })
 
-      const profile = await this.prisma.getProfile(userId)
-      const wallet = await this.prisma.getUserWallet(userId)
+      if (!user) {
+        return this.response.sendError(res, StatusCodes.NotFound, "User not found")
+      }
+
+      const [profile, wallet] = await Promise.all([
+        this.prisma.getProfile(userId),
+        this.prisma.getUserWallet(userId),
+      ])
+
+      if (!profile.pin) {
+        return this.response.sendError(res, StatusCodes.BadRequest, "Create a transaction PIN")
+      }
 
       const linkedBank = await this.prisma.linkedBank.findUnique({
-        where: { id: linkedBankId }
+        where: { id: linkedBankId },
       })
 
       if (!linkedBank) {
@@ -93,21 +107,27 @@ export class WalletService {
       }
 
       amount = Number(amount)
-      const MIN_AMOUNT = tx_source === 'NGN' ? 100 : 3
+      const MIN_AMOUNT = tx_source === 'NGN' ? 50 : 2
       if (amount < MIN_AMOUNT) {
-        return this.response.sendError(res, StatusCodes.BadRequest, `Minimum amount is ${tx_source === 'NGN' ? '₦100.00' : '$3.00'}`)
+        return this.response.sendError(res, StatusCodes.BadRequest, `Minimum amount is ${tx_source === 'NGN' ? '₦50.00' : '$2.00'}`)
       }
 
-      if (!profile.pin) {
-        return this.response.sendError(res, StatusCodes.BadRequest, "Create a transaction PIN")
+      const { price: amountInNGN, rate: dollarRate } = tx_source === 'USD' ? await this.conversion.convert_currency(amount, 'USD_TO_NGN') : { price: amount, rate: null }
+
+      const { maxSingleWithdrawal, maxDailyWithdrawal } = user.level.constraints
+      if (amountInNGN > maxSingleWithdrawal) {
+        return this.response.sendError(res, StatusCodes.BadRequest, `Maximum single withdrawal amount is ${maxSingleWithdrawal}`)
+      }
+
+      const currentDailyWithdrawalAmount = user.dailyWithdrawalAmount
+      if ((currentDailyWithdrawalAmount + amountInNGN) > maxDailyWithdrawal) {
+        return this.response.sendError(res, StatusCodes.BadRequest, `Exceeds daily withdrawal limit of ${maxDailyWithdrawal}`)
       }
 
       if (pin) {
         const pinTrialsKey = `pinTrials:${userId}`
         const pinTrials = await this.prisma.cache.findUnique({
-          where: {
-            key: pinTrialsKey
-          },
+          where: { key: pinTrialsKey },
         })
 
         let maxPinTrials = 5
@@ -120,12 +140,8 @@ export class WalletService {
           maxPinTrials = 3
           resetInterval += 3_600_000
           await this.prisma.cache.update({
-            where: {
-              key: pinTrialsKey
-            },
-            data: {
-              createdAt: new Date(currentTime),
-            },
+            where: { key: pinTrialsKey },
+            data: { createdAt: new Date(currentTime) },
           })
 
           return
@@ -134,31 +150,16 @@ export class WalletService {
         const isMatch = await this.encryption.compare(pin, profile.pin)
         if (!isMatch) {
           const cache = await this.prisma.cache.upsert({
-            where: {
-              key: pinTrialsKey
-            },
-            create: {
-              key: pinTrialsKey,
-              value: 1,
-              createdAt: new Date(currentTime),
-            },
-            update: {
-              value: {
-                increment: 1
-              },
-              createdAt: new Date(currentTime),
-            },
+            where: { key: pinTrialsKey },
+            create: { key: pinTrialsKey, value: 1, createdAt: new Date(currentTime) },
+            update: { value: { increment: 1 }, createdAt: new Date(currentTime) },
           })
 
           return this.response.sendError(res, StatusCodes.Unauthorized, `Invalid PIN. ${maxPinTrials - cache.value} trial(s) left`)
         }
 
         if (pinTrials) {
-          await this.prisma.cache.delete({
-            where: {
-              key: pinTrialsKey
-            },
-          })
+          await this.prisma.cache.delete({ where: { key: pinTrialsKey } })
         }
       }
 
@@ -176,7 +177,6 @@ export class WalletService {
         }
       }
 
-      const { price: amountInNGN, rate: dollarRate } = tx_source === 'USD' ? await this.conversion.convert_currency(amount, 'USD_TO_NGN') : { price: amount, rate: null }
       const amountInKobo = amountInNGN * 100
       const fee = await this.misc.calculateFees(amount, tx_source)
       const totalFeeInNGN = tx_source === "NGN" ? fee.totalFee : (await this.conversion.convert_currency(fee.totalFee, "USD_TO_NGN")).price
@@ -195,7 +195,7 @@ export class WalletService {
         bank_code: linkedBank.bankCode,
         currency: 'NGN',
         name: details.account_name,
-        type: 'nuban'
+        type: 'nuban',
       })
 
       const { data: transfer } = await this.paystack.initiateTransfer({
@@ -203,39 +203,49 @@ export class WalletService {
         source: 'balance',
         reason: `Quidate - ${user.fullName}`,
         amount: amountInKobo,
-        reference: `transfer-${userId}-${genRandomCode()}`
+        reference: `transfer-${userId}-${genRandomCode()}`,
       })
 
       await Promise.all([
         this.prisma.manageBalance(userId, tx_source === 'NGN' ? 'ngnBalance' : 'usdBalance', tx_source === 'NGN' ? deductedAmountInNGN : amountPlusFee, 'decrement'),
-
         this.prisma.transactionHistory.create({
           data: {
             dollarRate,
-            ip: getIpAddress(req),
             source: 'fiat',
             type: 'DISBURSEMENT',
             amount: amountInNGN,
+            ip: getIpAddress(req),
             totalFee: totalFeeInNGN,
             ref: transfer.reference,
             outward_source: tx_source,
+            narration: transfer.reason,
+            sourceType: transfer.source,
+            currency: transfer.currency,
             paystackFee: fee.paystackFee,
             processingFee: fee.processingFee,
-            currency: transfer.currency,
-            narration: transfer.reason,
             transferCode: transfer.transfer_code,
             settlementAmount: deductedAmountInNGN,
+            recipient: transfer.recipient as number,
+            createdAt: new Date(transfer.createdAt),
             destinationBankCode: recepient.details.bank_code,
             destinationBankName: recepient.details.bank_name,
             destinationAccountName: recepient.details.account_name,
-            destinationAccountNumber: recepient.details.account_number,
-            sourceType: transfer.source,
-            recipient: transfer.recipient as number,
             status: transfer.status.toUpperCase() as TransferStatus,
-            createdAt: new Date(transfer.createdAt),
-            user: { connect: { id: userId } }
-          }
-        })
+            destinationAccountNumber: recepient.details.account_number,
+            user: { connect: { id: userId } },
+          },
+        }),
+        this.prisma.user.update({
+          where: { id: userId },
+          data: {
+            dailyWithdrawalAmount: {
+              increment: amountInNGN,
+            },
+            lastWithdrawalReset: user.lastWithdrawalReset && new Date(user.lastWithdrawalReset).toDateString() === new Date().toDateString()
+              ? user.lastWithdrawalReset
+              : new Date(),
+          },
+        }),
       ])
 
       res.on('finish', async () => {
@@ -245,43 +255,36 @@ export class WalletService {
             data: {
               lastWithdrewAt: new Date(),
               lasCurrencyEffect: tx_source,
-              lastAmountWithdrawn: tx_source === 'NGN' ? deductedAmountInNGN : amountPlusFee
-            }
+              lastAmountWithdrawn: tx_source === 'NGN' ? deductedAmountInNGN : amountPlusFee,
+            },
           }),
           this.prisma.recipient.upsert({
-            where: {
-              userId,
-              recipient_code: recepient.recipient_code,
-            },
+            where: { userId, recipient_code: recepient.recipient_code },
             create: {
-              account_name: recepient.details.account_name,
-              account_number: recepient.details.account_number,
               type: recepient.type,
-              recipient_code: recepient.recipient_code,
-              recipient_id: recepient.id,
+              updatedAt: new Date(),
               domain: recepient.domain,
+              recipient_id: recepient.id,
+              integration: recepient.integration,
               bank_code: recepient.details.bank_code,
               bank_name: recepient.details.bank_name,
-              authorization_code: recepient.details.authorization_code,
+              recipient_code: recepient.recipient_code,
               createdAt: new Date(recepient.createdAt),
-              updatedAt: new Date(),
-              integration: recepient.integration,
-              user: { connect: { id: userId } }
+              account_name: recepient.details.account_name,
+              account_number: recepient.details.account_number,
+              authorization_code: recepient.details.authorization_code,
+              user: { connect: { id: userId } },
             },
-            update: { updatedAt: new Date() }
+            update: { updatedAt: new Date() },
           }),
           this.prisma.notification.create({
             data: {
               reference: transfer.reference,
               title: 'Transaction Successful',
               description: `A total fee of ${tx_source === 'NGN' ? `₦${fee.totalFee}` : `$${fee.totalFee}`} was charged.`,
-              user: {
-                connect: {
-                  id: userId
-                }
-              }
-            }
-          })
+              user: { connect: { id: userId } },
+            },
+          }),
         ])
       })
 

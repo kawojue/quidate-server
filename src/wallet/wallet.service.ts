@@ -313,7 +313,7 @@ export class WalletService {
 
       const [user, profile, wallet] = await Promise.all([
         this.prisma.user.findUnique({
-           where: { id: userId }
+          where: { id: userId }
         }),
         this.prisma.getProfile(userId),
         this.prisma.getUserWallet(userId),

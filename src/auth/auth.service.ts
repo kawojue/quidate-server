@@ -70,7 +70,7 @@ export class AuthService {
       const ALLOWED_CONTINENTS = ['Africa']
       const ip_info = await this.whois.getInfo(req)
       if (!ALLOWED_CONTINENTS.includes(ip_info.continent)) {
-        this.response.sendError(res, StatusCodes.Forbidden, "Your Country is not allowed")
+        return this.response.sendError(res, StatusCodes.Forbidden, "Your Country is not allowed")
       }
 
       const tierOne = await this.prisma.level.findUnique({
@@ -101,38 +101,11 @@ export class AuthService {
             user: { connect: { id: user.id } }
           }
         }),
-        this.prisma.ip.create({
+        this.prisma.wallet.create({
           data: {
-            ip: ip_info.ip,
-            type: ip_info.type,
-            city: ip_info.city,
-            isEu: ip_info.is_eu,
-            region: ip_info.region,
-            postal: ip_info.postal,
-            capital: ip_info.capital,
-            country: ip_info.country,
-            borders: ip_info.borders,
-            flagImg: ip_info.flag.img,
-            latitude: ip_info.latitude,
-            longitude: ip_info.longitude,
-            continent: ip_info.continent,
-            flagEmoji: ip_info.flag.emoji,
-            regionCode: ip_info.region_code,
-            countryCode: ip_info.country_code,
-            callingCode: ip_info.calling_code,
-            currencyCode: ip_info.currency.code,
-            currencyName: ip_info.currency.name,
-            connectionIsp: ip_info.connection.isp,
-            connectionOrg: ip_info.connection.org,
-            continentCode: ip_info.continent_code,
-            connectionAsn: ip_info.connection.asn,
-            currencySymbol: ip_info.currency.symbol,
-            currencyPlural: ip_info.currency.plural,
-            connectionDomain: ip_info.connection.domain,
-            flagEmojiUnicode: ip_info.flag.emoji_unicode,
             user: { connect: { id: user.id } }
           }
-        })
+        }),
       ])
 
       res.on('finish', async () => {
@@ -154,6 +127,38 @@ export class AuthService {
                 }
               },
             }),
+            this.prisma.ip.create({
+              data: {
+                ip: ip_info?.ip,
+                type: ip_info?.type,
+                city: ip_info?.city,
+                isEu: ip_info?.is_eu,
+                region: ip_info?.region,
+                postal: ip_info?.postal,
+                capital: ip_info?.capital,
+                country: ip_info?.country,
+                borders: ip_info?.borders,
+                flagImg: ip_info?.flag?.img,
+                latitude: ip_info?.latitude,
+                longitude: ip_info?.longitude,
+                continent: ip_info?.continent,
+                flagEmoji: ip_info?.flag?.emoji,
+                regionCode: ip_info?.region_code,
+                countryCode: ip_info?.country_code,
+                callingCode: ip_info?.calling_code,
+                currencyCode: ip_info?.currency?.code,
+                currencyName: ip_info?.currency?.name,
+                connectionIsp: ip_info?.connection?.isp,
+                connectionOrg: ip_info?.connection?.org,
+                continentCode: ip_info?.continent_code,
+                connectionAsn: ip_info?.connection?.asn,
+                currencySymbol: ip_info?.currency?.symbol,
+                currencyPlural: ip_info?.currency?.plural,
+                connectionDomain: ip_info?.connection?.domain,
+                flagEmojiUnicode: ip_info?.flag?.emoji_unicode,
+                user: { connect: { id: user.id } }
+              }
+            }),
           ])
 
           if (process.env.NODE_ENV !== 'production') {
@@ -162,7 +167,9 @@ export class AuthService {
         }
       })
 
-      this.response.sendSuccess(res, StatusCodes.Created, "Account created successfully")
+      this.response.sendSuccess(res, StatusCodes.Created, {
+        message: "Account created successfully"
+      })
     } catch (err) {
       this.misc.handleServerError(res, err)
     }

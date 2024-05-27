@@ -6,10 +6,11 @@ import { GiftCardService } from './gift-card.service'
 import { PrismaService } from 'prisma/prisma.service'
 import { ResponseService } from 'lib/response.service'
 import { GiftCardController } from './gift-card.controller'
+import { PriceConversionService } from 'lib/price-conversion'
 
 @Module({
   imports: [PassportModule.register({ defaultStrategy: 'jwt' }), JwtModule],
   controllers: [GiftCardController],
-  providers: [GiftCardService, PrismaService, ResponseService, PlunkService],
+  providers: [GiftCardService, PrismaService, ResponseService, PlunkService, PriceConversionService],
 })
 export class GiftCardModule { }

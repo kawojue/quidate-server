@@ -8,6 +8,7 @@ import { ResponseService } from 'lib/response.service'
 import { ModminController } from './modmin.controller'
 import { BitPowrSdkService } from 'lib/bitPowr.service'
 import { EncryptionService } from 'lib/encryption.service'
+import { PriceConversionService } from 'lib/price-conversion'
 
 @Module({
   imports: [PassportModule.register({ defaultStrategy: 'jwt' }), JwtModule],
@@ -19,6 +20,7 @@ import { EncryptionService } from 'lib/encryption.service'
     ResponseService,
     EncryptionService,
     BitPowrSdkService,
+    PriceConversionService,
   ],
 })
 export class ModminModule { }

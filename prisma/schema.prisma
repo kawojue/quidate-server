@@ -63,35 +63,35 @@ model Ip {
     user      User     @relation(fields: [userId], references: [id])
     userId    String   @unique @db.ObjectId
 
-    ip               String
-    type             String
-    continent        String
-    continentCode    String
-    country          String
-    countryCode      String
-    region           String
-    regionCode       String
-    city             String
-    latitude         Float
-    longitude        Float
-    isEu             Boolean
-    postal           String
-    callingCode      String
-    capital          String
-    borders          String
-    flagImg          String
-    flagEmoji        String
-    flagEmojiUnicode String
+    ip               String?
+    type             String?
+    continent        String?
+    continentCode    String?
+    country          String?
+    countryCode      String?
+    region           String?
+    regionCode       String?
+    city             String?
+    latitude         Float?
+    longitude        Float?
+    isEu             Boolean?
+    postal           String?
+    callingCode      String?
+    capital          String?
+    borders          String?
+    flagImg          String?
+    flagEmoji        String?
+    flagEmojiUnicode String?
 
-    connectionAsn    Int
-    connectionOrg    String
-    connectionIsp    String
-    connectionDomain String
+    connectionAsn    Int?
+    connectionOrg    String?
+    connectionIsp    String?
+    connectionDomain String?
 
-    currencyName   String
-    currencyCode   String
-    currencySymbol String
-    currencyPlural String
+    currencyName   String?
+    currencyCode   String?
+    currencySymbol String?
+    currencyPlural String?
 }
 
 model Level {

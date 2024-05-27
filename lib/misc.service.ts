@@ -9,13 +9,12 @@ import { PriceConversionService } from './price-conversion'
 
 @Injectable()
 export class MiscService {
-    private response: ResponseService
-    private conversion: PriceConversionService
 
-    constructor(private readonly jwtService: JwtService) {
-        this.response = new ResponseService()
-        this.conversion = new PriceConversionService()
-    }
+    constructor(
+        private readonly jwtService: JwtService,
+        private readonly response: ResponseService,
+        private readonly conversion: PriceConversionService,
+    ) { }
 
     async generateNewAccessToken({ sub, role, userStatus }: JwtPayload) {
         return await this.jwtService.signAsync({ sub, role, userStatus })

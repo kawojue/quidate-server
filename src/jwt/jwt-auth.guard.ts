@@ -1,6 +1,6 @@
-import { PrismaService } from 'prisma/prisma.service'
 import { JwtService } from '@nestjs/jwt'
 import { Reflector } from '@nestjs/core'
+import { PrismaService } from 'prisma/prisma.service'
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common'
 
 @Injectable()
@@ -36,7 +36,7 @@ export class RolesGuard implements CanActivate {
                     }
                     request.user = decoded
                     return roles.includes(decoded.role)
-                }).catch(error => {
+                }).catch(() => {
                     return false
                 })
             }

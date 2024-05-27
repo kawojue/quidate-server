@@ -1,4 +1,5 @@
 import { BVNDTO } from './dto/bvn.dto'
+import { LeveLName } from '@prisma/client'
 import { Request, Response } from 'express'
 import { Injectable } from '@nestjs/common'
 import { PinDto } from './dto/pin-auth.dto'
@@ -819,6 +820,9 @@ export class AuthService {
     try {
       const user = await this.prisma.user.findUnique({
         where: { id: sub },
+        include: {
+          level: true,
+        }
       })
 
       const profile = await this.prisma.profile.findUnique({
@@ -876,8 +880,15 @@ export class AuthService {
         return this.response.sendError(res, StatusCodes.Unauthorized, "Profiles not matched")
       }
 
-      const tierTwoLevel = await this.prisma.level.findUnique({
-        where: { name: 'TIER_2' },
+      const currentLevel = user.level.name
+      let newLevelName: LeveLName = 'TIER_2'
+
+      if (currentLevel === 'TIER_2') {
+        newLevelName = 'TIER_3'
+      }
+
+      const newLevel = await this.prisma.level.findUnique({
+        where: { name: newLevelName },
       })
 
       await this.prisma.$transaction([
@@ -897,7 +908,7 @@ export class AuthService {
           data: {
             fullName: titleText(data.full_name),
             level: {
-              connect: { id: tierTwoLevel.id },
+              connect: { id: newLevel.id },
             },
           },
         }),
@@ -914,10 +925,10 @@ export class AuthService {
           this.prisma.notification.create({
             data: {
               title: 'Account Upgrade!',
-              description: 'Your account has now been upgraded to Tier 2',
+              description: `Your account has now been upgraded to ${newLevelName}`,
               user: { connect: { id: user.id } },
-            }
-          })
+            },
+          }),
         ])
       })
 

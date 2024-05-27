@@ -5,6 +5,7 @@ import { ConfigModule } from '@nestjs/config'
 import { MiscService } from 'lib/misc.service'
 import { TaskService } from 'lib/task.service'
 import { AuthModule } from './auth/auth.module'
+import { UserModule } from './user/user.module'
 import { PlunkService } from 'lib/plunk.service'
 import { WhoisService } from 'lib/whois.service'
 import { AppController } from './app.controller'
@@ -41,6 +42,7 @@ import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/c
     ]),
     ScheduleModule.forRoot(),
     AuthModule,
+    UserModule,
     WalletModule,
     ModminModule,
     WehbooksModule,

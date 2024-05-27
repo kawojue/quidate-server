@@ -20,6 +20,10 @@ export const generateOTP = (length: number = 6): IGenOTP => {
     return { totp, totp_expiry }
 }
 
+export const maskedBvn = (bvn: string) => {
+    return bvn.length === 11 ? bvn.slice(0, 3) + '*****' + bvn.slice(-3) : bvn
+}
+
 export const genRandomCode = (): string => {
     function randomString(length: number): string {
         let result = ''

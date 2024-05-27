@@ -265,6 +265,7 @@ export class WalletService {
               updatedAt: new Date(),
               domain: recepient.domain,
               recipient_id: recepient.id,
+              recipient_type: 'provider',
               integration: recepient.integration,
               bank_code: recepient.details.bank_code,
               bank_name: recepient.details.bank_name,
@@ -463,6 +464,7 @@ export class WalletService {
           create: {
             updatedAt: new Date(),
             createdAt: currentDate,
+            recipient_type: 'in_app',
             fullname: receiver.fullName,
             username: receiver.username,
             user: { connect: { id: user.id } }

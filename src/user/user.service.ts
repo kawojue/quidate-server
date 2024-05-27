@@ -30,6 +30,17 @@ export class UserService {
           fullName: true,
           username: true,
           dailyWithdrawalAmount: true,
+          level: {
+            select: {
+              name: true,
+              constraints: {
+                select: {
+                  maxDailyWithdrawal: true,
+                  maxSingleWithdrawal: true,
+                }
+              }
+            }
+          },
           profile: {
             select: {
               bvn: true,
@@ -47,6 +58,7 @@ export class UserService {
       this.response.sendSuccess(res, StatusCodes.OK, {
         data: {
           email: user.email,
+          level: user.level,
           phone: profile.phone,
           username: user.username,
           fullname: user.fullName,
@@ -523,5 +535,26 @@ export class UserService {
     }
   }
 
-  // async fetchTiers() {}
+  async fetchTiers(res: Response, { sub }: ExpressUser) {
+    const currentLevel = await this.prisma.level.findFirst({
+      where: {
+        users: {
+          some: {
+            id: sub
+          }
+        }
+      },
+      include: {
+        constraints: true
+      }
+    })
+
+    const levels = await this.prisma.level.findMany({
+      include: {
+        constraints: true
+      }
+    })
+
+    this.response.sendSuccess(res, StatusCodes.OK, { data: { currentLevel, levels } })
+  }
 }

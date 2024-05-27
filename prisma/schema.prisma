@@ -113,7 +113,7 @@ model LevelConstraintTierOne {
     id                  String    @id @default(auto()) @map("_id") @db.ObjectId
     name                LeveLName @default(TIER_1)
     maxDailyWithdrawal  Float     @default(500000)
-    maxSingleWithdrawal Float     @default(50000)
+    maxSingleWithdrawal Float     @default(100000)
 }
 
 model LevelConstraintTierTwo {

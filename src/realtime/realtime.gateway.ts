@@ -74,8 +74,8 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayInit {
 
       if (role !== "user") {
         client.emit('authorization_error', {
-          status: StatusCodes.Unauthorized,
-          message: 'You are not authorized to fetch messages from this inbox',
+          status: StatusCodes.Forbidden,
+          message: 'Forbidden',
         })
         return
       }
@@ -111,8 +111,8 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayInit {
 
     if (role !== "user") {
       client.emit('authorization_error', {
-        status: StatusCodes.Unauthorized,
-        message: 'You are not authorized to fetch messages from this inbox',
+        status: StatusCodes.Forbidden,
+        message: 'Forbidden',
       })
       return
     }

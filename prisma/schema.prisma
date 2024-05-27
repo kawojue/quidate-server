@@ -135,11 +135,6 @@ model BlacklistedIP {
     ip String @unique
 }
 
-model WaitList {
-    id    String @id @default(auto()) @map("_id") @db.ObjectId
-    email String @unique
-}
-
 model Modmin {
     id       String @id @default(auto()) @map("_id") @db.ObjectId
     fullName String

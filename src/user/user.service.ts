@@ -522,4 +522,6 @@ export class UserService {
       this.misc.handleServerError(res, err, 'Error fetching recipients')
     }
   }
+
+  // async fetchTiers() {}
 }

@@ -44,22 +44,16 @@ export class UserService {
 
       const profile = user.profile
 
-      const allUnreadNotifications = await this.prisma.notification.count({
-        where: {
-          userId: id,
-          read: false,
-        }
-      })
-
       this.response.sendSuccess(res, StatusCodes.OK, {
         data: {
           email: user.email,
+          phone: profile.phone,
           username: user.username,
           fullname: user.fullName,
           primaryAsset: profile.primaryAsset,
           email_verified: profile.email_verified,
           avatar: profile?.avatar?.secure_url ?? null,
-          hasUnreadNotifications: allUnreadNotifications > 0,
+          dailyWithdrawalAmount: user.dailyWithdrawalAmount,
           bvn: profile?.bvn ? maskedBvn(this.encryptionService.decipherSync(profile.bvn)) : null
         },
       })
@@ -68,29 +62,6 @@ export class UserService {
       return
     }
   }
-
-  // async fetchVirtualAccount(res: Response, {sub: userId}: ExpressUser) {
-  //   try {
-  //     const virtualAccount = await this.prisma.wallet.findUnique({
-  //       where: {
-  //         userId: user.sub
-  //       },
-  //       select: {
-  //         currency: true,
-  //         bank_name: true,
-  //         ngnBalance: true,
-  //         usdBalance: true,
-  //         account_name: true,
-  //         account_number: true,
-  //       }
-  //     })
-
-  //     this.response.sendSuccess(res, StatusCodes.OK, { data: virtualAccount })
-  //   } catch (err) {
-  //     console.error(err)
-  //     this.response.sendError(res, StatusCodes.InternalServerError, "Error fetching Virtual Account")
-  //   }
-  // }
 
   async fetchAssetMetadata(res: Response, { sub: userId }: ExpressUser) {
     try {

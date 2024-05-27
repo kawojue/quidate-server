@@ -33,6 +33,7 @@ export class TaskService {
         while (true) {
             const users = await this.prisma.user.findMany({
                 where: {
+                    userStatus: 'active',
                     lastWithdrawalReset: {
                         lt: new Date(new Date().setHours(0, 0, 0, 0)),
                     },

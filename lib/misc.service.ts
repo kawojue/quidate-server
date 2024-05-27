@@ -41,7 +41,7 @@ export class MiscService {
     async validateAndDecodeToken(token: string) {
         try {
             return await this.jwtService.verifyAsync(token, {
-                secret: process.env.JWT_SECRET
+                secret: process.env.HANDLE_ENCRYPTION_KEY
             })
         } catch (err) {
             console.error(err)

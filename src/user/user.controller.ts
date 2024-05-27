@@ -105,6 +105,7 @@ export class UserController {
     await this.userService.fetchNotifications(res, req.user)
   }
 
+  @Roles('user')
   @Get('/tiers')
   async fetchTiers(@Req() req: IRequest, @Res() res: Response) {
     await this.userService.fetchTiers(res, req.user)

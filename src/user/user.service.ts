@@ -477,10 +477,12 @@ export class UserService {
         where,
         select: {
           id: true,
+          userId: true,
           fullname: true,
           username: true,
           user: {
             select: {
+              id: true,
               profile: {
                 select: {
                   phone: true,

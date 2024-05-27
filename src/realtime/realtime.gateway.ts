@@ -13,8 +13,10 @@ import { PrismaService } from 'prisma/prisma.service'
   transports: ['polling', 'websocket'],
   cors: {
     origin: [
-      'http://localhost:3000',
-      'http://localhost:3001',
+      `http://localhost:3000`,
+      `http://localhost:3001`,
+      'https://quidate.finance',
+      'https://quidate-server-v2.up.railway.app'
     ],
   }
 })

@@ -15,7 +15,7 @@ async function bootstrap() {
       `http://localhost:3001`,
       'https://quidate.finance',
       `http://localhost:${PORT}`,
-      'https://quidate-server-v2.onrender.com'
+      'https://quidate-server-v2.up.railway.app'
     ],
     optionsSuccessStatus: 200,
     methods: 'GET,PATCH,POST,PUT,DELETE',
@@ -29,7 +29,7 @@ async function bootstrap() {
   const swaggerOptions = new DocumentBuilder()
     .setTitle('Quidate API')
     .setVersion('2.0')
-    .addServer('https://quidate-server-v2.onrender.com', 'Staging')
+    .addServer('https://quidate-server-v2.up.railway.app', 'Staging')
     .addServer(`http://localhost:${PORT}`, 'Local')
     .addBearerAuth()
     .build()

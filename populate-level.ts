@@ -13,7 +13,7 @@ async function main() {
         update: {},
         create: {
             id: tierOneConstraintId,
-            maxDailyWithdrawal: 100_000, // 500k
+            maxDailyWithdrawal: 100_000, // 100k
             maxSingleWithdrawal: 50_000, // 50k
         },
     })

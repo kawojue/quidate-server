@@ -1,14 +1,15 @@
 import { Response } from 'express'
+import {
+    FetchProductsDto, FXRateDTO, SearchDto,
+    InfiniteScrollDto, PurchaseGiftCardDTO,
+} from './dto/gift-card.dto'
 import { Injectable } from '@nestjs/common'
 import { StatusCodes } from 'enums/statusCodes'
 import { PlunkService } from 'lib/plunk.service'
+import { genRandomCode } from 'helpers/generator'
 import { PrismaService } from 'prisma/prisma.service'
 import { ResponseService } from 'lib/response.service'
 import { Consumer } from 'lib/Reloadly/reloadly.service'
-import {
-    FetchProductsDto, FXRateDTO, InfiniteScrollDto, PurchaseGiftCardDTO, SearchDto
-} from './dto/gift-card.dto'
-import { genRandomCode } from 'helpers/generator'
 
 @Injectable()
 export class GiftCardService {
@@ -53,7 +54,6 @@ export class GiftCardService {
             this.response.sendError(res, StatusCodes.InternalServerError, 'Failed to fetch products')
         }
     }
-
 
     async fetchProductById(res: Response, productId: string) {
         const product = await this.consumer.sendRequest<GiftCardProduct>('GET', `products/${productId}`) || null

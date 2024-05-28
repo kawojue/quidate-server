@@ -17,6 +17,7 @@ import { ResponseService } from 'lib/response.service'
 import { ThreatIntelService } from 'lib/threat.service'
 import { InvoiceModule } from './invoice/invoice.module'
 import { EncryptionService } from 'lib/encryption.service'
+import { RealtimeModule } from './realtime/realtime.module'
 import { WehbooksModule } from './webhooks/webhooks.module'
 import { GiftCardModule } from './gift-card/gift-card.module'
 import { PriceConversionService } from 'lib/price-conversion'
@@ -46,6 +47,7 @@ import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/c
     WalletModule,
     ModminModule,
     WehbooksModule,
+    RealtimeModule,
     GiftCardModule,
     CloudinaryModule,
   ],

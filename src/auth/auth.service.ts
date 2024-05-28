@@ -447,19 +447,13 @@ export class AuthService {
         return
       }
 
-      const currentTime = new Date().getTime()
-      const otp_expiry = new Date(totp.otp_expiry).getTime()
+      const currentTime = new Date()
+      const otp_expiry = new Date(totp.otp_expiry)
 
       if (currentTime > otp_expiry) {
         this.response.sendError(res, StatusCodes.Forbidden, "OTP has expired")
-        await this.prisma.totp.update({
-          where: {
-            id: totp.id
-          },
-          data: {
-            otp: null,
-            otp_expiry: null,
-          }
+        await this.prisma.totp.delete({
+          where: { id: totp.id },
         })
 
         return
@@ -472,7 +466,7 @@ export class AuthService {
 
       if (profile) {
         await this.prisma.totp.delete({
-          where: { userId: profile.id }
+          where: { userId: profile.userId }
         })
       }
 

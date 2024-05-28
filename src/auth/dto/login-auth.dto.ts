@@ -3,6 +3,8 @@ import {
     IsString
 } from 'class-validator'
 import { ApiProperty } from '@nestjs/swagger'
+import { Transform } from 'class-transformer'
+import { toLowerCase } from 'helpers/transformer'
 
 
 export class LoginAuthDto {
@@ -12,6 +14,7 @@ export class LoginAuthDto {
     })
     @IsString()
     @IsEmail({}, { message: 'Invalid email format' })
+    @Transform(({ value }) => toLowerCase(value))
     email: string
 
     @ApiProperty({

@@ -8,6 +8,8 @@ import {
     MinLength,
 } from 'class-validator'
 import { ApiProperty } from '@nestjs/swagger'
+import { Transform } from 'class-transformer'
+import { titleText, toLowerCase } from 'helpers/transformer'
 
 export class EmailDto {
     @ApiProperty({
@@ -31,6 +33,7 @@ export class UsernameDto {
         message: "Username is too short"
     })
     @IsNotEmpty()
+    @Transform(({ value }) => toLowerCase(value))
     username: string
 }
 
@@ -41,6 +44,7 @@ export class CreateAuthDto extends UsernameDto {
     })
     @IsEmail({}, { message: 'Invalid email format' })
     @IsNotEmpty({ message: 'Email cannot be empty' })
+    @Transform(({ value }) => toLowerCase(value))
     email: string
 
     @ApiProperty({
@@ -49,6 +53,7 @@ export class CreateAuthDto extends UsernameDto {
     })
     @IsString({ message: 'Full name must be a string' })
     @IsNotEmpty({ message: 'Full name cannot be empty' })
+    @Transform(({ value }) => titleText(value))
     fullName: string
 
     @ApiProperty({

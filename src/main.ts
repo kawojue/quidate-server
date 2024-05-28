@@ -24,7 +24,7 @@ async function bootstrap() {
   app.use(express.json({ limit: 10 << 20 }))
 
   app.setGlobalPrefix('/api/v2')
-  app.useGlobalPipes(new ValidationPipe())
+  app.useGlobalPipes(new ValidationPipe({ transform: true }))
 
   const swaggerOptions = new DocumentBuilder()
     .setTitle('Quidate API')
@@ -39,9 +39,9 @@ async function bootstrap() {
 
   try {
     await app.listen(PORT)
-    console.log(`Server is running on http://localhost:${PORT}`)
-  } catch (error) {
-    console.error(`Error starting the server: ${error.message}`)
+    console.log(`http://localhost:${PORT}`)
+  } catch (err) {
+    console.error(err.message)
   }
 }
 

@@ -15,9 +15,9 @@ import { ResponseService } from 'lib/response.service'
 import { PrismaService } from 'prisma/prisma.service'
 import axios, { AxiosError, AxiosResponse } from 'axios'
 import { EncryptionService } from 'lib/encryption.service'
+import { titleText, toUpperCase } from 'helpers/transformer'
 import { CreateAuthDto, UsernameDto } from './dto/create-auth.dto'
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service'
-import { titleText, toLowerCase, toUpperCase } from 'helpers/transformer'
 import { UpdatePasswordDto, ResetPasswordDto } from './dto/password-auth.dto'
 
 @Injectable()
@@ -41,10 +41,6 @@ export class AuthService {
     }: CreateAuthDto
   ) {
     try {
-      email = toLowerCase(email)
-      fullName = titleText(fullName)
-      username = toLowerCase(username)
-
       if (!this.misc.validateUsername(username)) {
         return this.response.sendError(res, StatusCodes.BadRequest, "Username is not allowed")
       }
@@ -181,9 +177,7 @@ export class AuthService {
   ) {
     try {
       const user = await this.prisma.user.findUnique({
-        where: {
-          email: email.toLowerCase().trim()
-        },
+        where: { email },
         include: { profile: true }
       })
 
@@ -685,8 +679,6 @@ export class AuthService {
     { username }: UsernameDto,
   ) {
     try {
-      username = toLowerCase(username)
-
       const user = await this.prisma.user.findUnique({
         where: {
           id: userId

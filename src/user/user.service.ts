@@ -44,6 +44,7 @@ export class UserService {
           profile: {
             select: {
               bvn: true,
+              pin: true,
               phone: true,
               avatar: true,
               primaryAsset: true,
@@ -55,6 +56,15 @@ export class UserService {
 
       const profile = user.profile
 
+      const [linkedBanksCount, walletAddressesCount] = await this.prisma.$transaction([
+        this.prisma.linkedBank.count({
+          where: { userId: user.id }
+        }),
+        this.prisma.linkedBank.count({
+          where: { userId: user.id }
+        })
+      ])
+
       this.response.sendSuccess(res, StatusCodes.OK, {
         data: {
           email: user.email,
@@ -63,15 +73,17 @@ export class UserService {
           username: user.username,
           fullname: user.fullName,
           primaryAsset: profile.primaryAsset,
-          email_verified: profile.email_verified,
+          isPinCreated: profile.pin !== null,
+          hasLinkedAccount: linkedBanksCount > 0,
+          email_verified: user.profile.email_verified,
           avatar: profile?.avatar?.secure_url ?? null,
+          hasAssignedAddresses: walletAddressesCount > 0,
           dailyWithdrawalAmount: user.dailyWithdrawalAmount,
           bvn: profile?.bvn ? maskedBvn(this.encryptionService.decipherSync(profile.bvn)) : null
         },
       })
-    } catch {
-      this.response.sendError(res, StatusCodes.InternalServerError, "Error fetching Profile")
-      return
+    } catch (err) {
+      this.misc.handleServerError(res, err, "Error fetching Profile")
     }
   }
 

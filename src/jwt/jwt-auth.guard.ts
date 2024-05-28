@@ -7,8 +7,8 @@ import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common'
 export class RolesGuard implements CanActivate {
     constructor(
         private reflector: Reflector,
-        private readonly prisma: PrismaService,
-        private readonly jwtService: JwtService,
+        private prisma: PrismaService,
+        private jwtService: JwtService,
     ) { }
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -23,24 +23,19 @@ export class RolesGuard implements CanActivate {
 
         try {
             const decoded = this.jwtService.verify(token)
-            if (decoded?.sub && decoded?.status && decoded?.modelName) {
-                const id = decoded.sub
-                const status = decoded.status
-                const modelName = decoded.modelName
-
-                return (this.prisma[modelName] as any).findUnique({
-                    where: { id }
-                }).then(res => {
-                    if (res.status !== status || res.status !== 'ACTIVE') {
-                        return false
+            if (decoded?.sub && decoded.role === 'user') {
+                return this.prisma.user.findUnique({
+                    where: {
+                        id: decoded.sub
                     }
+                }).then(user => {
+                    if ((decoded.userStatus !== user.userStatus) || (decoded.userStatus === 'suspended')) return false
                     request.user = decoded
                     return roles.includes(decoded.role)
-                }).catch(() => {
+                }).catch(_ => {
                     return false
                 })
             }
-
             request.user = decoded
             return roles.includes(decoded.role)
         } catch (error) {

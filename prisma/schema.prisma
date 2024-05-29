@@ -346,6 +346,7 @@ model Asset {
 model TransactionHistory {
     id                       String               @id @default(auto()) @map("_id") @db.ObjectId
     ip                       String?
+    tx_id                    String?              @unique
     ref                      String               @unique
     hash                     String?              @unique
     type                     TransactionType
@@ -482,8 +483,9 @@ enum TransferStatus {
 enum TransactionType {
     DEPOSIT
     RESOURCE
-    DISBURSEMENT
+    GIFTCARD
     CONVERSION
+    DISBURSEMENT
 }
 
 enum TransactionSource {

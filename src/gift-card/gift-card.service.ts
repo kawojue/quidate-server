@@ -154,11 +154,18 @@ export class GiftCardService {
                 customIdentifier: `${sub}-${genRandomCode()}`
             }
 
-            const order = await this.consumer.sendRequest<GiftCardTransaction>('POST', '', payload)
+            const order = await this.consumer.sendRequest<GiftCardTransaction>('POST', 'orders', payload)
+
+            // const tx = await this.prisma.transactionHistory.create({
+            //     data: {
+
+            //         user: {connect: {id: sub}}
+            //     }
+            // })
         } catch (err) {
 
         }
     }
 
-    async redeemInstruction() { }
+    async redeemCode() { }
 }

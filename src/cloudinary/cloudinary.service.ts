@@ -19,7 +19,7 @@ export class CloudinaryService {
     ): Promise<UploadApiResponse | UploadApiErrorResponse> {
         try {
             return new Promise((resolve, reject) => {
-                const extension = file.filename.split('.').pop()
+                const extension = file.originalname.split('.').pop()
                 const upload = cloudinary.uploader.upload_stream({
                     ...header,
                     public_id: `${genFileName()}.${extension}`

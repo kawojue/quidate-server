@@ -38,7 +38,7 @@ export class UserController {
   }
 
   @Roles('user')
-  @Get('/primary-assettadata')
+  @Get('/primary-asset/metadata')
   async fetchAssetMetadata(@Req() req: IRequest, @Res() res: Response) {
     await this.userService.fetchAssetMetadata(res, req.user)
   }

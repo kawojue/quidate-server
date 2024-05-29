@@ -11,10 +11,10 @@ import { RolesGuard } from 'src/jwt/jwt-auth.guard'
 import { ResponseService } from 'lib/response.service'
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
 import { PriceConversionService } from 'lib/price-conversion'
+import { BankDetailsDTO, ValidateBankDTO } from './dto/bank.dto'
 import {
   Controller, Get, Post, Param, UseGuards, Req, Res, Query, Body
 } from '@nestjs/common'
-import { BankDetailsDTO, ValidateBankDTO } from './dto/bank.dto'
 import {
   AmountDTO, GetReceiverDTO, InitiateLocalTransferDTO, InitiateWithdrawalDTO, TxSourceDTO
 } from './dto/tx.dto'
@@ -86,7 +86,7 @@ export class WalletController {
     await this.walletService.fundWallet(res, req.user, body)
   }
 
-  @Post('/withdraw')
+  @Post('/withdraw/:linkedBankId')
   async initiateWithdrawal(
     @Req() req: Request,
     @Res() res: Response,

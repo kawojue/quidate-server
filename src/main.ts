@@ -15,6 +15,7 @@ async function bootstrap() {
       `http://localhost:3001`,
       'https://quidate.finance',
       `http://localhost:${PORT}`,
+      'https://quidate-staging.up.railway.app',
       'https://quidate-server-v2.up.railway.app'
     ],
     optionsSuccessStatus: 200,

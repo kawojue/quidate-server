@@ -16,6 +16,7 @@ import { PrismaService } from 'prisma/prisma.service'
       `http://localhost:3000`,
       `http://localhost:3001`,
       'https://quidate.finance',
+      'https://quidate-staging.up.railway.app',
       'https://quidate-server-v2.up.railway.app'
     ],
   }

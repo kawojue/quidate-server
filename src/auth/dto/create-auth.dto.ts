@@ -5,7 +5,6 @@ import {
     MinLength,
     MaxLength,
     IsNotEmpty,
-    IsPhoneNumber,
 } from 'class-validator'
 import { ApiProperty } from '@nestjs/swagger'
 import { Transform } from 'class-transformer'
@@ -69,10 +68,12 @@ export class CreateAuthDto extends UsernameDto {
     password: string
 
     @ApiProperty({
-        example: '+2348131911964',
+        example: '8131911964',
         description: 'The phone number for the user.',
     })
-    @IsPhoneNumber()
+    @Matches(/^\d{10}$/, {
+        message: "Invalid phone number"
+    })
     phone: string
 
     @ApiProperty({

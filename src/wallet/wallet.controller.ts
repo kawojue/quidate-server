@@ -145,7 +145,7 @@ export class WalletController {
     })
   }
 
-  @Get('/transfer/:receiverId')
+  @Get('/transfer')
   @Roles(Role.user)
   async getReceiver(
     @Res() res: Response,

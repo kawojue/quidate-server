@@ -1,13 +1,11 @@
 import { Response } from 'express'
 import { AssetDTO } from './dto/asset.dto'
 import { Injectable } from '@nestjs/common'
-import { maskedBvn } from 'helpers/generator'
 import { MiscService } from 'lib/misc.service'
 import { StatusCodes } from 'enums/statusCodes'
 import { RecipientDto } from './dto/recipient.dto'
 import { PrismaService } from 'prisma/prisma.service'
 import { ResponseService } from 'lib/response.service'
-import { EncryptionService } from 'lib/encryption.service'
 import { TxAggregateDTO, TxHistoriesDto, TxHistoryDto } from './dto/history.dto'
 import { TransactionSource, TransactionType, TransferStatus } from '@prisma/client'
 
@@ -17,7 +15,6 @@ export class UserService {
     private readonly misc: MiscService,
     private readonly prisma: PrismaService,
     private readonly response: ResponseService,
-    private readonly encryptionService: EncryptionService,
   ) { }
 
   async me(res: Response, { sub: id }: ExpressUser) {
@@ -43,7 +40,6 @@ export class UserService {
           },
           profile: {
             select: {
-              bvn: true,
               pin: true,
               phone: true,
               avatar: true,
@@ -79,7 +75,6 @@ export class UserService {
           avatar: profile?.avatar?.secure_url ?? null,
           hasAssignedAddresses: walletAddressesCount > 0,
           dailyWithdrawalAmount: user.dailyWithdrawalAmount,
-          bvn: profile?.bvn ? maskedBvn(this.encryptionService.decipherSync(profile.bvn)) : null
         },
       })
     } catch (err) {

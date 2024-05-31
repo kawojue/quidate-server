@@ -15,7 +15,7 @@ import { ResponseService } from 'lib/response.service'
 import { PrismaService } from 'prisma/prisma.service'
 import axios, { AxiosError, AxiosResponse } from 'axios'
 import { EncryptionService } from 'lib/encryption.service'
-import { titleText, toUpperCase } from 'helpers/transformer'
+import { normalizePhoneNumber, titleText, toUpperCase } from 'helpers/transformer'
 import { CreateAuthDto, UsernameDto } from './dto/create-auth.dto'
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service'
 import { UpdatePasswordDto, ResetPasswordDto } from './dto/password-auth.dto'
@@ -36,8 +36,8 @@ export class AuthService {
     req: Request,
     res: Response,
     {
-      fullName, username,
-      phone, email, password
+      fullName, username, email,
+      phone, password, countryCode,
     }: CreateAuthDto
   ) {
     try {
@@ -93,6 +93,7 @@ export class AuthService {
         this.prisma.profile.create({
           data: {
             phone,
+            countryCode,
             primaryAsset: 'BTC',
             user: { connect: { id: user.id } }
           }
@@ -805,131 +806,147 @@ export class AuthService {
     }
   }
 
-  async manageBVN(
-    res: Response,
-    { bvn }: BVNDTO,
-    { sub }: ExpressUser,
-  ) {
-    try {
-      const user = await this.prisma.user.findUnique({
-        where: { id: sub },
-        include: {
-          level: true,
-        }
-      })
+  // async manageBVN(
+  //   res: Response,
+  //   { bvn }: BVNDTO,
+  //   { sub }: ExpressUser,
+  // ) {
+  //   try {
+  //     const user = await this.prisma.user.findUnique({
+  //       where: { id: sub },
+  //       include: {
+  //         level: true,
+  //       }
+  //     })
 
-      const profile = await this.prisma.profile.findUnique({
-        where: { userId: sub },
-      })
+  //     const profile = await this.prisma.profile.findUnique({
+  //       where: { userId: sub },
+  //     })
 
-      if (profile && profile.bvn && profile.bvn_verified) {
-        return this.response.sendError(res, StatusCodes.Conflict, "Existing BVN")
-      }
+  //     if (profile && profile.bvn && profile.bvn_verified) {
+  //       return this.response.sendError(res, StatusCodes.Conflict, "Existing BVN")
+  //     }
 
-      let data: {
-        dob: string
-        phone: string
-        gender: string
-        full_name: string
-        nationality: string
-        state_of_origin: string
-      } | null
-      let matchingNamesCount = 0
+  //     let data: {
+  //       dob: string
+  //       phone: string
+  //       gender: string
+  //       full_name: string
+  //       nationality: string
+  //       state_of_origin: string
+  //     } | null
+  //     let matchingNamesCount = 0
+  //     let percentage = 0
 
-      await axios.post(
-        "https://api.verified.africa/sfx-verify/v3/id-service/",
-        {
-          searchParameter: bvn,
-          verificationType: "BVN-FULL-DETAILS",
-        },
-        {
-          headers: {
-            userId: process.env.BVN_USER_ID,
-            apiKey: process.env.BVN_API_KEY,
-          },
-        }
-      ).then((res: AxiosResponse) => {
-        data = res.data?.response || null
-      }).catch((err: AxiosError) => {
-        console.error(err)
-        return this.response.sendError(res, StatusCodes.BadRequest, "Error fetching your data")
-      })
+  //     await axios.post(
+  //       "https://api.verified.africa/sfx-verify/v3/id-service/",
+  //       {
+  //         searchParameter: bvn,
+  //         verificationType: "BVN-FULL-DETAILS",
+  //       },
+  //       {
+  //         headers: {
+  //           userId: process.env.BVN_USER_ID,
+  //           apiKey: process.env.BVN_API_KEY,
+  //         },
+  //       }
+  //     ).then((res: AxiosResponse) => {
+  //       data = res.data?.response || null
+  //     }).catch((err: AxiosError) => {
+  //       console.error(err)
+  //       return this.response.sendError(res, StatusCodes.BadRequest, "Error fetching your data")
+  //     })
 
-      if (data === null) {
-        return this.response.sendError(res, StatusCodes.Forbidden, "Invalid BVN provided")
-      }
+  //     if (data === null) {
+  //       return this.response.sendError(res, StatusCodes.Forbidden, "Invalid BVN provided")
+  //     }
 
-      const full_name: string[] = toUpperCase(user.fullName).split(/[\s,]+/).filter(Boolean)
-      const bvn_fullName: string[] = toUpperCase(data.full_name).split(/[\s,]+/).filter(Boolean)
+  //     const full_name: string[] = toUpperCase(user.fullName).split(/[\s,]+/).filter(Boolean)
+  //     const bvn_fullName: string[] = toUpperCase(data.full_name).split(/[\s,]+/).filter(Boolean)
 
-      for (const bvn_name of bvn_fullName) {
-        if (full_name.includes(bvn_name)) {
-          matchingNamesCount += 1
-        }
-      }
+  //     for (const bvn_name of bvn_fullName) {
+  //       if (full_name.includes(bvn_name)) {
+  //         matchingNamesCount += 1
+  //       }
+  //     }
 
-      const verified = matchingNamesCount >= 2
-      if (!verified) {
-        return this.response.sendError(res, StatusCodes.Unauthorized, "Profiles not matched")
-      }
+  //     percentage = matchingNamesCount * 25
 
-      const currentLevel = user.level.name
-      let newLevelName: LeveLName = 'TIER_2'
+  //     if (data?.phone) {
+  //       for (const tel of data.phone) {
+  //         const normalizedTel = normalizePhoneNumber(tel)
+  //         for (const profileTel of profile.phone) {
+  //           const normalizedProfileTel = normalizePhoneNumber(profileTel)
+  //           if (normalizedTel.endsWith(normalizedProfileTel) || normalizedProfileTel.endsWith(normalizedTel)) {
+  //             percentage += 15
+  //             break
+  //           }
+  //         }
+  //       }
+  //     }
 
-      if (currentLevel === 'TIER_2') {
-        newLevelName = 'TIER_3'
-      }
+  //     const verified = percentage >= 80
+  //     if (!verified) {
+  //       return this.response.sendError(res, StatusCodes.Unauthorized, "Profiles not matched")
+  //     }
 
-      const newLevel = await this.prisma.level.findUnique({
-        where: { name: newLevelName },
-      })
+  //     const currentLevel = user.level.name
+  //     let newLevelName: LeveLName = 'TIER_2'
 
-      await this.prisma.$transaction([
-        this.prisma.profile.create({
-          data: {
-            dob: data.dob,
-            phone: data.phone,
-            bvn_verified: verified,
-            nationality: data.nationality,
-            user: { connect: { id: user.id } },
-            bvn: this.encryption.cipherSync(bvn),
-            state_of_origin: data.state_of_origin,
-          },
-        }),
-        this.prisma.user.update({
-          where: { id: user.id },
-          data: {
-            fullName: titleText(data.full_name),
-            level: {
-              connect: { id: newLevel.id },
-            },
-          },
-        }),
-      ])
+  //     if (currentLevel === 'TIER_2') {
+  //       newLevelName = 'TIER_3'
+  //     }
 
-      res.on('finish', async () => {
-        await this.prisma.$transaction([
-          this.prisma.recipient.updateMany({
-            where: { fullname: user.fullName },
-            data: {
-              fullname: titleText(data.full_name),
-            },
-          }),
-          this.prisma.notification.create({
-            data: {
-              title: 'Account Upgrade!',
-              description: `Your account has now been upgraded to ${newLevelName}`,
-              user: { connect: { id: user.id } },
-            },
-          }),
-        ])
-      })
+  //     const newLevel = await this.prisma.level.findUnique({
+  //       where: { name: newLevelName },
+  //     })
 
-      this.response.sendSuccess(res, StatusCodes.Created, { message: "Successful" })
-    } catch (err) {
-      this.misc.handleServerError(res, err, "Sorry, something happened on our end")
-    }
-  }
+  //     await this.prisma.$transaction([
+  //       this.prisma.profile.update({
+  //         where: { id: user.id },
+  //         data: {
+  //           dob: data.dob,
+  //           bvn_verified: verified,
+  //           nationality: data.nationality,
+  //           user: { connect: { id: user.id } },
+  //           bvn: this.encryption.cipherSync(bvn),
+  //           state_of_origin: data.state_of_origin,
+  //         },
+  //       }),
+  //       this.prisma.user.update({
+  //         where: { id: user.id },
+  //         data: {
+  //           fullName: titleText(data.full_name),
+  //           level: {
+  //             connect: { id: newLevel.id },
+  //           },
+  //         },
+  //       }),
+  //     ])
+
+  //     res.on('finish', async () => {
+  //       await this.prisma.$transaction([
+  //         this.prisma.recipient.updateMany({
+  //           where: { fullname: user.fullName },
+  //           data: {
+  //             fullname: titleText(data.full_name),
+  //           },
+  //         }),
+  //         this.prisma.notification.create({
+  //           data: {
+  //             title: 'Account Upgrade!',
+  //             description: `Your account has now been upgraded to ${newLevelName}`,
+  //             user: { connect: { id: user.id } },
+  //           },
+  //         }),
+  //       ])
+  //     })
+
+  //     this.response.sendSuccess(res, StatusCodes.Created, { message: "Successful" })
+  //   } catch (err) {
+  //     this.misc.handleServerError(res, err, "Sorry, something happened on our end")
+  //   }
+  // }
 
   async deleteAccount(res: Response, { sub: id }: ExpressUser) {
     try {

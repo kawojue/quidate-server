@@ -6,7 +6,6 @@ import { PassportModule } from '@nestjs/passport'
 import { UserController } from './user.controller'
 import { PrismaService } from 'prisma/prisma.service'
 import { ResponseService } from 'lib/response.service'
-import { EncryptionService } from 'lib/encryption.service'
 import { PriceConversionService } from 'lib/price-conversion'
 
 @Module({
@@ -17,7 +16,6 @@ import { PriceConversionService } from 'lib/price-conversion'
     MiscService,
     PrismaService,
     ResponseService,
-    EncryptionService,
     PriceConversionService,
   ]
 })

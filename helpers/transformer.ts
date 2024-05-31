@@ -29,3 +29,19 @@ export const formatSize = (size: number) => {
 
     return format
 }
+
+export const normalizePhoneNumber = (phoneNumber: string) => {
+    let normalized = phoneNumber.replace(/\D/g, '')
+
+    if (normalized.startsWith('0')) {
+        normalized = normalized.slice(1)
+    }
+
+    if (normalized.startsWith('00')) {
+        normalized = normalized.slice(2)
+    } else if (normalized.startsWith('+')) {
+        normalized = normalized.slice(1)
+    }
+
+    return normalized
+}

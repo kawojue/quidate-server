@@ -1,6 +1,7 @@
 import { JwtService } from '@nestjs/jwt'
 import { APP_GUARD } from '@nestjs/core'
 import { AppService } from './app.service'
+import { KycModule } from './kyc/kyc.module'
 import { ConfigModule } from '@nestjs/config'
 import { MiscService } from 'lib/misc.service'
 import { TaskService } from 'lib/task.service'
@@ -50,6 +51,7 @@ import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/c
     RealtimeModule,
     GiftCardModule,
     CloudinaryModule,
+    KycModule,
   ],
   exports: [PrismaService, EncryptionService],
   controllers: [AppController],

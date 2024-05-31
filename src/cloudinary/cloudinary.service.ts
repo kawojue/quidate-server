@@ -21,7 +21,7 @@ export class CloudinaryService {
             return new Promise((resolve, reject) => {
                 const upload = cloudinary.uploader.upload_stream({
                     ...header,
-                    public_id: `${genFileName(file.originalname)}`
+                    public_id: `${genFileName()}`
                 }, (error, result) => {
                     if (error) return reject(error)
                     resolve(result)

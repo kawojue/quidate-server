@@ -24,6 +24,7 @@ model User {
     wallet                Wallet?
     profile               Profile?
     logs                  Log[]
+    kyc                   Kyc[]
     invoices              Invoice[]
     recipients            Recipient[]
     banks                 LinkedBank[]
@@ -41,8 +42,7 @@ model User {
 model Profile {
     id              String     @id @default(auto()) @map("_id") @db.ObjectId
     phone           String     @unique
-    bvn             String?    @unique
-    bvn_verified    Boolean    @default(false)
+    countryCode     String
     pin             String?
     lastPinChanged  DateTime?
     deviceToken     String?
@@ -54,6 +54,17 @@ model Profile {
     dob             String?
     user            User       @relation(fields: [userId], references: [id])
     userId          String     @unique @db.ObjectId
+}
+
+model Kyc {
+    id          String    @id @default(auto()) @map("_id") @db.ObjectId
+    type        KycType
+    verified    Boolean   @default(false)
+    id_no       String    @unique
+    means_of_id MeansOfID
+    proof_of_id File[]
+    user        User      @relation(fields: [userId], references: [id])
+    userId      String    @unique @db.ObjectId
 }
 
 model Ip {
@@ -511,6 +522,19 @@ enum LeveLName {
 enum RecipientType {
     in_app
     provider
+}
+
+enum KycType {
+    DOCUMENT
+    UtitlityOrAddress
+}
+
+enum MeansOfID {
+    NIN
+    BVN
+    Passport
+    UtilityBill
+    DriverLicense
 }
 
 type File {

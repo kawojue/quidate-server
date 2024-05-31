@@ -1,9 +1,7 @@
 import { randomBytes } from 'crypto'
 
-export function genFileName(originalname: string) {
-    const extension = originalname.split('.').pop()
-
-    return `Qui_${randomBytes(2).toString('hex')}_${new Date().toDateString().split(" ").join('-')}.${extension}`
+export function genFileName() {
+    return `Qui_${randomBytes(2).toString('hex')}_${new Date().toDateString().split(" ").join('-')}`
 }
 
 

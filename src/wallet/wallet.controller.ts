@@ -150,9 +150,9 @@ export class WalletController {
   @Roles(Role.user)
   async getReceiver(
     @Res() res: Response,
-    @Body() body: GetReceiverDTO,
+    @Query() q: GetReceiverDTO,
   ) {
-    await this.walletService.getReceiver(res, body)
+    await this.walletService.getReceiver(res, q)
   }
 
   @Post('/transfer/:receiverId')

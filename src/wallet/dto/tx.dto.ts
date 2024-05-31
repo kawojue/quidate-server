@@ -1,14 +1,14 @@
+import {
+    IsNotEmpty, IsNumber, IsOptional,
+    IsString, MaxLength, MinLength, IsEnum,
+} from 'class-validator'
 import { ApiProperty } from '@nestjs/swagger'
 import { TransactionCurrency } from '@prisma/client'
-import {
-    IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, MaxLength, MinLength
-} from 'class-validator'
 
 
 export class TxSourceDTO {
     @ApiProperty({
-        example: 'USD',
-        description: 'The user balance source of the transaction.'
+        enum: TransactionCurrency
     })
     @IsEnum(TransactionCurrency)
     tx_source: TransactionCurrency
@@ -16,8 +16,12 @@ export class TxSourceDTO {
 
 export class GetReceiverDTO {
     @ApiProperty({
-        examples: ['kawojue', '+2348131911964', '8131911964', '08131911964']
+        example: ['kawojue', '+2348131911964', '8131911964', '08131911964']
     })
+    @IsString()
+    @IsNotEmpty()
+    @MinLength(3)
+    @MaxLength(14)
     phoneOrUsername: string
 }
 

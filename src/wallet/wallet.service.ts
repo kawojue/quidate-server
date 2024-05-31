@@ -309,6 +309,7 @@ export class WalletService {
     }: InitiateLocalTransferDTO
   ) {
     try {
+      amount = Number(amount)
       // @ts-ignore
       const userId = req.user?.sub
 
@@ -601,6 +602,8 @@ export class WalletService {
     { amount }: AmountDTO,
   ) {
     try {
+      amount = Number(amount)
+
       if (0 >= amount) {
         return this.response.sendError(res, StatusCodes.BadRequest, 'Invalid amount')
       }
@@ -609,7 +612,6 @@ export class WalletService {
         where: { userId: sub }
       })
 
-      amount = Number(amount)
       if (amount > wallet.ngnBalance) {
         return this.response.sendError(res, StatusCodes.UnprocessableEntity, 'Insufficient NGN Balance')
       }
@@ -669,6 +671,8 @@ export class WalletService {
     { amount }: AmountDTO,
   ) {
     try {
+      amount = Number(amount)
+
       if (amount <= 0) {
         return this.response.sendError(res, StatusCodes.BadRequest, 'Amount is too low')
       }
@@ -677,7 +681,6 @@ export class WalletService {
         where: { userId: sub }
       })
 
-      amount = Number(amount)
       if (amount > wallet.usdBalance) {
         return this.response.sendError(res, StatusCodes.UnprocessableEntity, 'Insufficient USD Balance')
       }
@@ -751,7 +754,7 @@ export class WalletService {
       }
 
       const { data } = verifyTx
-      const amountPaid = data.amount / 100
+      const amount = data.amount / 100
       const channel = data?.authorization?.channel
       const authorization_code = data?.authorization?.authorization_code
 
@@ -760,8 +763,8 @@ export class WalletService {
           where: { userId: sub },
           data: {
             lastDepoistedAt: new Date(),
-            lastAmountDeposited: amountPaid,
-            ngnBalance: { increment: amountPaid }
+            lastAmountDeposited: amount,
+            ngnBalance: { increment: amount }
           }
         }),
         this.prisma.transactionHistory.create({
@@ -769,7 +772,7 @@ export class WalletService {
             channel,
             type: 'DEPOSIT',
             source: 'fiat',
-            amount: amountPaid,
+            amount: amount,
             authorization_code,
             ip: data.ip_address,
             ref: `deposit-${ref}}`,

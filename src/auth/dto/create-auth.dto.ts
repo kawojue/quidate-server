@@ -38,8 +38,7 @@ export class UsernameDto {
 
 export class CreateAuthDto extends UsernameDto {
     @ApiProperty({
-        example: 'john.doe@example.com',
-        description: 'The email address for the user.',
+        example: 'kawojue08@gmail.com',
     })
     @IsEmail({}, { message: 'Invalid email format' })
     @IsNotEmpty({ message: 'Email cannot be empty' })
@@ -47,8 +46,7 @@ export class CreateAuthDto extends UsernameDto {
     email: string
 
     @ApiProperty({
-        example: 'John Doe',
-        description: 'The full name of the user (First and Last names).',
+        example: 'Raheem Kawojue',
     })
     @IsString({ message: 'Full name must be a string' })
     @IsNotEmpty({ message: 'Full name cannot be empty' })
@@ -56,8 +54,7 @@ export class CreateAuthDto extends UsernameDto {
     fullName: string
 
     @ApiProperty({
-        example: 'P@ssw0rd1',
-        description: 'The password for the user.',
+        example: 'Mypswd123',
     })
     @IsString()
     @MinLength(6, { message: 'Password must be at least 6 characters' })
@@ -69,15 +66,18 @@ export class CreateAuthDto extends UsernameDto {
 
     @ApiProperty({
         example: '8131911964',
-        description: 'The phone number for the user.',
     })
     @Matches(/^\d{10}$/, {
         message: "Invalid phone number"
     })
+    @IsString()
+    @IsNotEmpty()
     phone: string
 
     @ApiProperty({
         example: "+234"
     })
+    @IsString()
+    @IsNotEmpty()
     countryCode: string
 }

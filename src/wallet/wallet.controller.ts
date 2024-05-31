@@ -6,6 +6,10 @@ import { MiscService } from 'lib/misc.service'
 import { StatusCodes } from 'enums/statusCodes'
 import { WalletService } from './wallet.service'
 import { SkipThrottle } from '@nestjs/throttler'
+import {
+  InitiateLocalTransferDTO, GetReceiverDTO,
+  AmountDTO, InitiateWithdrawalDTO, TxSourceDTO,
+} from './dto/tx.dto'
 import { FundWalletDTO } from './dto/deposit.dto'
 import { RolesGuard } from 'src/jwt/jwt-auth.guard'
 import { ResponseService } from 'lib/response.service'
@@ -15,9 +19,6 @@ import { BankDetailsDTO, ValidateBankDTO } from './dto/bank.dto'
 import {
   Controller, Get, Post, Param, UseGuards, Req, Res, Query, Body
 } from '@nestjs/common'
-import {
-  AmountDTO, GetReceiverDTO, InitiateLocalTransferDTO, InitiateWithdrawalDTO, TxSourceDTO
-} from './dto/tx.dto'
 
 @SkipThrottle()
 @ApiBearerAuth()

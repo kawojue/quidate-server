@@ -16,7 +16,7 @@ export class TxSourceDTO {
 
 export class GetReceiverDTO {
     @ApiProperty({
-        example: ['kawojue', '+2348131911964', '8131911964', '08131911964']
+        examples: ['kawojue', '+2348131911964', '8131911964', '08131911964']
     })
     @IsString()
     @IsNotEmpty()

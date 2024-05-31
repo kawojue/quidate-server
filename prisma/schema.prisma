@@ -525,8 +525,8 @@ enum RecipientType {
 }
 
 enum KycType {
+    BASIC
     DOCUMENT
-    UtitlityOrAddress
 }
 
 enum MeansOfID {

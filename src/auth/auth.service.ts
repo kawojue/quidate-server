@@ -1,5 +1,4 @@
-import { BVNDTO } from './dto/bvn.dto'
-import { LeveLName } from '@prisma/client'
+import { ObjectId } from 'mongodb'
 import { Request, Response } from 'express'
 import { Injectable } from '@nestjs/common'
 import { PinDto } from './dto/pin-auth.dto'
@@ -13,9 +12,7 @@ import { getIpAddress } from 'helpers/getIPAddress'
 import { LoginAuthDto } from './dto/login-auth.dto'
 import { ResponseService } from 'lib/response.service'
 import { PrismaService } from 'prisma/prisma.service'
-import axios, { AxiosError, AxiosResponse } from 'axios'
 import { EncryptionService } from 'lib/encryption.service'
-import { normalizePhoneNumber, titleText, toUpperCase } from 'helpers/transformer'
 import { CreateAuthDto, UsernameDto } from './dto/create-auth.dto'
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service'
 import { UpdatePasswordDto, ResetPasswordDto } from './dto/password-auth.dto'
@@ -78,29 +75,31 @@ export class AuthService {
         return this.response.sendError(res, StatusCodes.InternalServerError, "Level constraints not found")
       }
 
-      const user = await this.prisma.user.create({
-        data: {
-          fullName,
-          username,
-          email,
-          password,
-          dailyWithdrawalAmount: 0,
-          level: { connect: { id: tierOne.id } },
-        },
-      })
+      const _id = new ObjectId().toString()
 
-      await this.prisma.$transaction([
+      const [user] = await this.prisma.$transaction([
+        this.prisma.user.create({
+          data: {
+            id: _id,
+            fullName,
+            username,
+            email,
+            password,
+            dailyWithdrawalAmount: 0,
+            level: { connect: { id: tierOne.id } },
+          },
+        }),
         this.prisma.profile.create({
           data: {
             phone,
             countryCode,
             primaryAsset: 'BTC',
-            user: { connect: { id: user.id } }
+            user: { connect: { id: _id } }
           }
         }),
         this.prisma.wallet.create({
           data: {
-            user: { connect: { id: user.id } }
+            user: { connect: { id: _id } }
           }
         }),
       ])

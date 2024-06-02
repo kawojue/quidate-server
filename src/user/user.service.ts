@@ -56,7 +56,7 @@ export class UserService {
         this.prisma.linkedBank.count({
           where: { userId: user.id }
         }),
-        this.prisma.linkedBank.count({
+        this.prisma.walletAddress.count({
           where: { userId: user.id }
         })
       ])

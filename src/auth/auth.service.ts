@@ -194,7 +194,7 @@ export class AuthService {
         this.prisma.linkedBank.count({
           where: { userId: user.id }
         }),
-        this.prisma.linkedBank.count({
+        this.prisma.walletAddress.count({
           where: { userId: user.id }
         }),
         this.prisma.user.update({
@@ -446,8 +446,8 @@ export class AuthService {
 
       if (currentTime > otp_expiry) {
         this.response.sendError(res, StatusCodes.Forbidden, "OTP has expired")
-        await this.prisma.totp.delete({
-          where: { id: totp.id },
+        await this.prisma.totp.deleteMany({
+          where: { userId: totp.userId },
         })
 
         return
@@ -459,7 +459,7 @@ export class AuthService {
       })
 
       if (profile) {
-        await this.prisma.totp.delete({
+        await this.prisma.totp.deleteMany({
           where: { userId: profile.userId }
         })
       }
@@ -469,7 +469,7 @@ export class AuthService {
         message: "Successful",
       })
     } catch (err) {
-      this.misc.handleServerError(res, err)
+      this.misc.handleServerError(res, err, "Something went wrong")
     }
   }
 
@@ -522,18 +522,15 @@ export class AuthService {
           where: { userId: totp.userId },
           data: { email_verified: true }
         }),
-        this.prisma.totp.delete({
-          where: { id: totp.id }
+        this.prisma.totp.deleteMany({
+          where: { userId: totp.userId }
         }),
-
         this.prisma.notification.create({
           data: {
             title: 'Password Reset',
             description: `Your password has been reseted successfully. IP Address: ${getIpAddress(req)}`,
             user: {
-              connect: {
-                id: totp.userId
-              }
+              connect: { id: totp.userId }
             }
           }
         })
@@ -637,10 +634,8 @@ export class AuthService {
 
         if (expired) {
           this.response.sendError(res, StatusCodes.Forbidden, 'OTP has expired')
-          await this.prisma.totp.delete({
-            where: {
-              userId: totp.userId
-            }
+          await this.prisma.totp.deleteMany({
+            where: { userId: sub }
           })
           return
         }

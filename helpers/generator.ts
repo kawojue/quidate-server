@@ -4,7 +4,6 @@ export function genFileName() {
     return `Qui_${randomBytes(2).toString('hex')}_${new Date().toDateString().split(" ").join('-')}`
 }
 
-
 export const generateOTP = (length: number = 6): IGenOTP => {
     let totp: string = ''
     const digits: string = '0123456789'

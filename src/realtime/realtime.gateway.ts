@@ -48,7 +48,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayInit {
 
     try {
       const { sub, role } = await this.jwtService.verifyAsync(token, {
-        secret: process.env.JWT_SECRET,
+        secret: process.env.HANDLE_ENCRYPTION_KEY,
       })
 
       this.clients.set(client, { sub, role })

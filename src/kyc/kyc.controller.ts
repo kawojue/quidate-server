@@ -9,8 +9,8 @@ import { AuthGuard } from '@nestjs/passport'
 import { BasicKycDTO } from './dto/basic.dto'
 import { UtilityKycDTO } from './dto/utility.dto'
 import { RolesGuard } from 'src/jwt/jwt-auth.guard'
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger'
 import { AnyFilesInterceptor } from '@nestjs/platform-express'
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger'
 
 @ApiTags("KYC")
 @ApiBearerAuth()

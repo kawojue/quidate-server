@@ -9,7 +9,7 @@ import { AuthGuard } from '@nestjs/passport'
 import { BasicKycDTO } from './dto/basic.dto'
 import { UtilityKycDTO } from './dto/utility.dto'
 import { RolesGuard } from 'src/jwt/jwt-auth.guard'
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger'
 import { AnyFilesInterceptor } from '@nestjs/platform-express'
 
 @ApiTags("KYC")
@@ -24,6 +24,9 @@ export class KycController {
   @UseInterceptors(AnyFilesInterceptor({
     limits: { files: 2 }
   }))
+  @ApiOperation({
+    summary: 'The formdata keys should be proof_of_id'
+  })
   async basicKyc(
     @Req() req: IRequest,
     @Res() res: Response,
@@ -38,6 +41,9 @@ export class KycController {
   @UseInterceptors(AnyFilesInterceptor({
     limits: { files: 2 }
   }))
+  @ApiOperation({
+    summary: 'The formdata keys should be proof_of_id'
+  })
   async utilityKyc(
     @Req() req: IRequest,
     @Res() res: Response,

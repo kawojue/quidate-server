@@ -46,17 +46,6 @@ export class AuthController {
     await this.authService.login(res, loginAuthDto)
   }
 
-  // @Post('/bvn')
-  // @ApiBearerAuth()
-  // @UseGuards(AuthGuard('jwt'), RolesGuard)
-  // async manageBVN(
-  //   @Req() req: IRequest,
-  //   @Res() res: Response,
-  //   @Body() body: BVNDTO
-  // ) {
-  //   await this.authService.manageBVN(res, body, req.user)
-  // }
-
   @Post("/login/biometric")
   async biometricLogin(@Res() res: Response, @Body() { token }: LoginBiometricDto) {
     await this.authService.biometricLogin(res, token)

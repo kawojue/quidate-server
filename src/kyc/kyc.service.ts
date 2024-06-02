@@ -5,6 +5,7 @@ import { BasicKycDTO } from './dto/basic.dto'
 import { MiscService } from 'lib/misc.service'
 import { StatusCodes } from 'enums/statusCodes'
 import { PlunkService } from 'lib/plunk.service'
+import { UtilityKycDTO } from './dto/utility.dto'
 import { PrismaService } from 'prisma/prisma.service'
 import { ResponseService } from 'lib/response.service'
 import axios, { AxiosError, AxiosResponse } from 'axios'
@@ -118,7 +119,11 @@ export class KycService {
                     }
                 }
 
-                let percentage = matchingNamesCount * 23
+                let percentage = matchingNamesCount * 25
+
+                if (percentage < 50) {
+                    return this.response.sendError(res, StatusCodes.Unauthorized, "Profiles not matched")
+                }
 
                 if (data?.phone) {
                     for (const tel of data.phone) {
@@ -133,7 +138,7 @@ export class KycService {
                     }
                 }
 
-                const verified = percentage >= 65
+                const verified = percentage >= 80
                 if (!verified) {
                     return this.response.sendError(res, StatusCodes.Unauthorized, "Profiles not matched")
                 }
@@ -189,6 +194,10 @@ export class KycService {
                 this.response.sendSuccess(res, StatusCodes.Created, { message: "Successful" })
             }
 
+            if (files.length > 2) {
+                return this.response.sendError(res, StatusCodes.BadRequest, "Only the front and bank of the ID is required")
+            }
+
             let proof_of_ids: Attachment[] = []
 
             try {
@@ -242,6 +251,109 @@ export class KycService {
 
             this.response.sendSuccess(res, StatusCodes.OK, {
                 message: "Document has been submitted"
+            })
+        } catch (err) {
+            this.misc.handleServerError(res, err)
+        }
+    }
+
+    async utilityKyc(
+        res: Response,
+        { sub }: ExpressUser,
+        { additional_notes }: UtilityKycDTO,
+        files: Array<Express.Multer.File>,
+    ) {
+        try {
+            const kycCount = await this.prisma.kyc.count({
+                where: { userId: sub }
+            })
+
+            if (kycCount === 2) {
+                const pendingKycCount = await this.prisma.kyc.count({
+                    where: { userId: sub, verified: false }
+                })
+
+                if (pendingKycCount >= 1) {
+                    return this.response.sendError(res, StatusCodes.UnprocessableEntity, "Account upgrade in progress")
+                } else {
+                    return this.response.sendError(res, StatusCodes.Accepted, "Kyc Completed!")
+                }
+            }
+
+            const isDoneUtilityKyc = await this.prisma.kyc.findFirst({
+                where: { userId: sub, type: 'UTILITY' }
+            })
+
+            if (isDoneUtilityKyc) {
+                if (kycCount === 1) {
+                    return this.response.sendError(res, StatusCodes.UnprocessableEntity, "Upgrade your account by uploading your documents")
+                } else {
+                    if (!isDoneUtilityKyc.verified) {
+                        return this.response.sendError(res, StatusCodes.Conflict, "Document is under review")
+                    } else {
+                        return this.response.sendError(res, StatusCodes.Accepted, "Account upgraded!")
+                    }
+                }
+            }
+
+            if (files.length > 2) {
+                return this.response.sendError(res, StatusCodes.BadRequest, "Only the front and bank of the ID is required")
+            }
+
+            let proof_of_ids: Attachment[] = []
+
+            try {
+                const promises = files.map(async file => {
+                    const MAX_SIZE = 5 << 20
+                    const allowedExtensions = ['jpg', 'jpeg', 'png']
+
+                    if (file.size > MAX_SIZE) {
+                        return this.response.sendError(res, StatusCodes.PayloadTooLarge, `${file.originalname} is too large`)
+                    }
+
+                    if (!allowedExtensions.includes(file.filename.split('.').pop())) {
+                        return this.response.sendError(res, StatusCodes.UnsupportedContent, `${file.originalname} is not allowed`)
+                    }
+
+                    const upload = await this.cloudinary.upload(file, {
+                        folder: `Quidate/KYC/${sub}`,
+                        resource_type: 'image'
+                    })
+
+                    return {
+                        public_url: upload.url,
+                        public_id: upload.public_id,
+                        secure_url: upload.secure_url,
+                    }
+                })
+
+                proof_of_ids = (await Promise.all(promises)).filter((result): result is Attachment => !!result)
+            } catch (err) {
+                try {
+                    if (proof_of_ids.length) {
+                        for (const proof_of_id of proof_of_ids) {
+                            if (proof_of_id?.public_id) {
+                                await this.cloudinary.delete(proof_of_id.public_id)
+                            }
+                        }
+                    }
+                } catch (err) {
+                    throw err
+                }
+            }
+
+            await this.prisma.kyc.create({
+                data: {
+                    additional_notes,
+                    proof_of_id: proof_of_ids,
+                    means_of_id: 'UtilityBill',
+                    user: { connect: { id: sub } },
+                    type: 'UTILITY', verified: false,
+                }
+            })
+
+            this.response.sendSuccess(res, StatusCodes.OK, {
+                data: "Document has been submitted"
             })
         } catch (err) {
             this.misc.handleServerError(res, err)

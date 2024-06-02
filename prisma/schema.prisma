@@ -57,16 +57,17 @@ model Profile {
 }
 
 model Kyc {
-    id          String    @id @default(auto()) @map("_id") @db.ObjectId
-    type        KycType
-    verified    Boolean   @default(false)
-    id_no       String    @unique
-    means_of_id MeansOfID
-    proof_of_id File[]
-    createdAt   DateTime  @default(now())
-    updatedAt   DateTime  @updatedAt
-    user        User      @relation(fields: [userId], references: [id])
-    userId      String    @db.ObjectId
+    id               String    @id @default(auto()) @map("_id") @db.ObjectId
+    type             KycType
+    verified         Boolean   @default(false)
+    id_no            String?   @unique
+    additional_notes String?
+    means_of_id      MeansOfID
+    proof_of_id      File[]
+    createdAt        DateTime  @default(now())
+    updatedAt        DateTime  @updatedAt
+    user             User      @relation(fields: [userId], references: [id])
+    userId           String    @db.ObjectId
 }
 
 model Ip {
@@ -528,7 +529,7 @@ enum RecipientType {
 
 enum KycType {
     BASIC
-    DOCUMENT
+    UTILITY
 }
 
 enum MeansOfID {

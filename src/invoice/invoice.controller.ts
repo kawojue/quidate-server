@@ -24,7 +24,7 @@ export class InvoiceController {
     @Res() res: Response,
     @Body() body: CreateInvoiceDto
   ) {
-    return await this.invoiceService.createInvoice(res, req.user, body)
+    await this.invoiceService.createInvoice(res, req.user, body)
   }
 
   @ApiBearerAuth()
@@ -32,7 +32,7 @@ export class InvoiceController {
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(Role.user)
   async fetchInvoices(@Req() req: IRequest, @Res() res: Response) {
-    return await this.invoiceService.fetchInvoices(res, req.user)
+    await this.invoiceService.fetchInvoices(res, req.user)
   }
 
   @Get('/:invoiceNo')
@@ -41,7 +41,7 @@ export class InvoiceController {
     @Res() res: Response,
     @Param('invoiceNo') invoiceNo: string
   ) {
-    return await this.invoiceService.getInvoice(req, res, invoiceNo)
+    await this.invoiceService.getInvoice(req, res, invoiceNo)
   }
 
   @ApiBearerAuth()
@@ -53,6 +53,6 @@ export class InvoiceController {
     @Req() req: IRequest,
     @Param('invoiceNo') invoiceNo: string
   ) {
-    return await this.invoiceService.removeInvoice(res, invoiceNo, req.user)
+    await this.invoiceService.removeInvoice(res, invoiceNo, req.user)
   }
 }

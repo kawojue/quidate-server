@@ -100,4 +100,32 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
             }
         })
     }
+
+    async constraints(userId: string) {
+        const [
+            linkedBanksCount, walletAddressesCount,
+            IdVerification, proofOfAddress,
+        ] = await this.$transaction([
+            this.linkedBank.count({
+                where: { userId }
+            }),
+            this.walletAddress.count({
+                where: { userId }
+            }),
+            this.kyc.findFirst({
+                where: { userId, type: 'BASIC' },
+                select: { verified: true },
+            }),
+            this.kyc.findFirst({
+                where: { userId, type: 'UTILITY' },
+                select: { verified: true }
+            })
+        ])
+
+        return {
+            proofOfAddress, IdVerification,
+            hasLinkedAccount: linkedBanksCount > 0,
+            hasAssignedAddresses: walletAddressesCount > 0,
+        }
+    }
 }

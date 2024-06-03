@@ -190,21 +190,13 @@ export class AuthService {
         return this.response.sendError(res, StatusCodes.Unauthorized, "Incorrect Password")
       }
 
-      const [linkedBanksCount, walletAddressesCount] = await this.prisma.$transaction([
-        this.prisma.linkedBank.count({
-          where: { userId: user.id }
-        }),
-        this.prisma.walletAddress.count({
-          where: { userId: user.id }
-        }),
-        this.prisma.user.update({
-          where: { id: user.id },
-          data: {
-            lastLoggedInAt: new Date(),
-            lastUsedCredAt: new Date()
-          }
-        })
-      ])
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          lastLoggedInAt: new Date(),
+          lastUsedCredAt: new Date()
+        }
+      })
 
       this.response.sendSuccess(res, StatusCodes.OK, {
         access_token: await this.misc.generateNewAccessToken({
@@ -212,17 +204,15 @@ export class AuthService {
           role: user.role,
           userStatus: user.userStatus
         }),
-
         data: {
           id: user.id,
           email: user.email,
           username: user.username,
           fullname: user.fullName,
-          hasLinkedAccount: linkedBanksCount > 0,
           isPinCreated: user.profile.pin !== null,
           primaryAsset: user.profile.primaryAsset,
+          ...(await this.prisma.constraints(user.id)),
           email_verified: user.profile.email_verified,
-          hasAssignedAddresses: walletAddressesCount > 0,
           avatar: user.profile.avatar?.secure_url ?? null,
         },
         message: "Login Successful",
@@ -252,26 +242,18 @@ export class AuthService {
         return this.response.sendError(res, StatusCodes.Unauthorized, checkings.reason)
       }
 
-      const [linkedBanksCount, walletAddressesCount] = await this.prisma.$transaction([
-        this.prisma.linkedBank.count({
-          where: { userId: user.id }
-        }),
-        this.prisma.walletAddress.count({
-          where: { userId: user.id }
-        }),
-        this.prisma.user.update({
-          where: { id: user.id },
-          data: {
-            lastLoggedInAt: new Date(),
-            lastUsedBiometricAt: new Date()
-          }
-        })
-      ])
-
       const access_token = await this.misc.generateNewAccessToken({
         sub: user.id,
         role: user.role,
         userStatus: user.userStatus
+      })
+
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          lastLoggedInAt: new Date(),
+          lastUsedBiometricAt: new Date()
+        }
       })
 
       this.response.sendSuccess(res, StatusCodes.OK, {
@@ -281,11 +263,10 @@ export class AuthService {
           email: user.email,
           username: user.username,
           fullname: user.fullName,
-          hasLinkedAccount: linkedBanksCount > 0,
           isPinCreated: user.profile.pin !== null,
           primaryAsset: user.profile.primaryAsset,
+          ...(await this.prisma.constraints(user.id)),
           email_verified: user.profile.email_verified,
-          hasAssignedAddresses: walletAddressesCount > 0,
           avatar: user.profile.avatar?.secure_url ?? null,
         },
         message: "Login Successful",

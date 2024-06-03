@@ -52,15 +52,6 @@ export class UserService {
 
       const profile = user.profile
 
-      const [linkedBanksCount, walletAddressesCount] = await this.prisma.$transaction([
-        this.prisma.linkedBank.count({
-          where: { userId: user.id }
-        }),
-        this.prisma.walletAddress.count({
-          where: { userId: user.id }
-        })
-      ])
-
       this.response.sendSuccess(res, StatusCodes.OK, {
         data: {
           email: user.email,
@@ -70,10 +61,9 @@ export class UserService {
           fullname: user.fullName,
           primaryAsset: profile.primaryAsset,
           isPinCreated: profile.pin !== null,
-          hasLinkedAccount: linkedBanksCount > 0,
+          ...(await this.prisma.constraints(id)),
           email_verified: user.profile.email_verified,
           avatar: profile?.avatar?.secure_url ?? null,
-          hasAssignedAddresses: walletAddressesCount > 0,
           dailyWithdrawalAmount: user.dailyWithdrawalAmount,
         },
       })

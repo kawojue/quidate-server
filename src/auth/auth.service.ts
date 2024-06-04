@@ -4,6 +4,7 @@ import { Injectable } from '@nestjs/common'
 import { PinDto } from './dto/pin-auth.dto'
 import { ReportDto } from './dto/report.dto'
 import { MiscService } from 'lib/misc.service'
+import { AddressDTO } from './dto/address.dto'
 import { StatusCodes } from 'enums/statusCodes'
 import { generateOTP } from 'helpers/generator'
 import { PlunkService } from 'lib/plunk.service'
@@ -80,20 +81,16 @@ export class AuthService {
       const [user] = await this.prisma.$transaction([
         this.prisma.user.create({
           data: {
-            id: _id,
-            fullName,
-            username,
-            email,
-            password,
+            username, password,
+            id: _id, email, fullName,
             dailyWithdrawalAmount: 0,
             level: { connect: { id: tierOne.id } },
           },
         }),
         this.prisma.profile.create({
           data: {
-            phone,
-            countryCode,
-            primaryAsset: 'BTC',
+            phone, countryCode, primaryAsset: 'BTC',
+            phoneWithIsoCode: `${countryCode}${phone}`,
             user: { connect: { id: _id } }
           }
         }),
@@ -109,11 +106,13 @@ export class AuthService {
           const otp = generateOTP()
 
           await Promise.all([
-            this.plunk.sendPlunkEmail({
+            process.env.NODE_ENV === 'production' ? this.plunk.sendPlunkEmail({
               to: email,
               subject: 'Verify your email',
               body: `otp : ${otp.totp}`
-            }),
+            }) : (() => {
+              console.log(otp.totp)
+            })(),
             this.prisma.totp.create({
               data: {
                 otp: otp.totp,
@@ -156,10 +155,6 @@ export class AuthService {
               }
             }),
           ])
-
-          if (process.env.NODE_ENV !== 'production') {
-            console.log(otp.totp)
-          }
         }
       })
 
@@ -276,17 +271,43 @@ export class AuthService {
     }
   }
 
+  async addAddress(
+    res: Response,
+    { sub }: ExpressUser,
+    dto: AddressDTO
+  ) {
+    try {
+      const address = await this.prisma.address.findUnique({
+        where: { userId: sub }
+      })
+
+      if (address) {
+        return this.response.sendError(res, StatusCodes.Conflict, "Address has already been added")
+      }
+
+      await this.prisma.address.create({
+        data: {
+          ...dto,
+          user: { connect: { id: sub } }
+        }
+      })
+
+      this.response.sendSuccess(res, StatusCodes.OK, {
+        message: "Address has been saved"
+      })
+    } catch (err) {
+      this.misc.handleServerError(res, err)
+    }
+  }
+
   async updatePassword(
     res: Response,
-    reqUser: ExpressUser,
+    { sub: userId }: ExpressUser,
     { oldPassword, password1, password2 }: UpdatePasswordDto
   ) {
     try {
-      const userId = reqUser.sub
       const user = await this.prisma.user.findUnique({
-        where: {
-          id: userId,
-        }
+        where: { id: userId }
       })
 
       const verifyPassword = await this.encryption.compare(oldPassword, user.password)
@@ -299,17 +320,12 @@ export class AuthService {
         return this.response.sendError(res, StatusCodes.BadRequest, "Passwords do not match")
       }
 
-      const hashedPassword = await this.encryption.hash(password1)
+      const password = await this.encryption.hash(password1)
 
       await this.prisma.$transaction([
         this.prisma.user.update({
-          where: {
-            id: userId
-          },
-          data: {
-            password: hashedPassword,
-            lastPasswordChanged: new Date()
-          }
+          where: { id: userId },
+          data: { password, lastPasswordChanged: new Date() }
         }),
         this.prisma.notification.create({
           data: {
@@ -548,9 +564,7 @@ export class AuthService {
         return this.response.sendError(res, StatusCodes.UnsupportedContent, "File extension is not allowed")
       }
 
-      const profile = await this.prisma.profile.findUnique({
-        where: { userId: sub }
-      })
+      const profile = await this.prisma.getProfile(sub)
 
       if (profile.avatar?.public_id) {
         await this.cloudinary.delete(profile.avatar.public_id)
@@ -585,15 +599,10 @@ export class AuthService {
     { pin1, pin2, otp }: PinDto,
   ) {
     try {
-      const user = await this.prisma.profile.findUnique({
-        where: { userId: sub },
-      })
+      const user = await this.prisma.getProfile(sub)
 
-      const isProd = process.env.NODE_ENV === 'production'
-      if (isProd) {
-        if (!user.email_verified) {
-          return this.response.sendError(res, StatusCodes.Forbidden, "Verify your email before creating a transaction PIN")
-        }
+      if (!user.email_verified) {
+        return this.response.sendError(res, StatusCodes.Forbidden, "Verify your email before creating a transaction PIN")
       }
 
       if (pin1 !== pin2) {
@@ -656,9 +665,7 @@ export class AuthService {
   ) {
     try {
       const user = await this.prisma.user.findUnique({
-        where: {
-          id: userId
-        }
+        where: { id: userId }
       })
 
       if (!this.misc.validateUsername(username)) {
@@ -696,7 +703,7 @@ export class AuthService {
         await this.prisma.notification.create({
           data: {
             title: 'Username Update',
-            description: `Your username has been updated across the app.`,
+            description: `Your username will be updated across the app.`,
             user: { connect: { id: userId } }
           }
         })

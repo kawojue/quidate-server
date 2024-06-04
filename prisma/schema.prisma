@@ -23,6 +23,7 @@ model User {
     totp                  Totp?
     wallet                Wallet?
     profile               Profile?
+    Address               Address?
     logs                  Log[]
     kyc                   Kyc[]
     invoices              Invoice[]
@@ -40,20 +41,30 @@ model User {
 }
 
 model Profile {
-    id              String     @id @default(auto()) @map("_id") @db.ObjectId
-    phone           String     @unique
-    countryCode     String
-    pin             String?
-    lastPinChanged  DateTime?
-    deviceToken     String?
-    primaryAsset    AssetType?
-    avatar          File?
-    email_verified  Boolean    @default(false)
-    state_of_origin String?
-    nationality     String?
-    dob             String?
-    user            User       @relation(fields: [userId], references: [id])
-    userId          String     @unique @db.ObjectId
+    id               String     @id @default(auto()) @map("_id") @db.ObjectId
+    phone            String     @unique
+    countryCode      String
+    phoneWithIsoCode String?
+    pin              String?
+    lastPinChanged   DateTime?
+    deviceToken      String?
+    primaryAsset     AssetType?
+    avatar           File?
+    email_verified   Boolean    @default(false)
+    user             User       @relation(fields: [userId], references: [id])
+    userId           String     @unique @db.ObjectId
+}
+
+model Address {
+    id          String  @id @default(auto()) @map("_id") @db.ObjectId
+    line1       String?
+    lin2        String?
+    state       String?
+    city        String?
+    country     String?
+    postal_code String?
+    user        User    @relation(fields: [userId], references: [id])
+    userId      String  @unique @db.ObjectId
 }
 
 model Kyc {
@@ -213,6 +224,8 @@ model Wallet {
     id                  String               @id @default(auto()) @map("_id") @db.ObjectId
     ngnBalance          Float                @default(0.00)
     usdBalance          Float                @default(0.00)
+    dummyUsdBalance     Float?               @default(0.00)
+    dummyNGNBalance     Float?               @default(0.00)
     lastAmountWithdrawn Float                @default(0.00)
     lastAmountDeposited Float                @default(0.00)
     lastWithdrewAt      DateTime?

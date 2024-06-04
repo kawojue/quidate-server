@@ -8,6 +8,7 @@ import { Request, Response } from 'express'
 import { ReportDto } from './dto/report.dto'
 import { AuthGuard } from '@nestjs/passport'
 import { AuthService } from './auth.service'
+import { AddressDTO } from './dto/address.dto'
 import { RolesGuard } from 'src/jwt/jwt-auth.guard'
 import {
   Controller, Post, UseGuards, UploadedFiles, Patch,
@@ -18,11 +19,9 @@ import { SkipThrottle, Throttle } from '@nestjs/throttler'
 import { CreateAuthDto, UsernameDto } from './dto/create-auth.dto'
 import { LoginAuthDto, LoginBiometricDto } from './dto/login-auth.dto'
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger'
-import { BVNDTO } from './dto/bvn.dto'
 
-
-@Controller('auth')
 @ApiTags('Auth')
+@Controller('auth')
 @SkipThrottle({ default: true })
 export class AuthController {
   constructor(private readonly authService: AuthService) { }
@@ -84,6 +83,18 @@ export class AuthController {
     @Body() body: UpdatePasswordDto
   ) {
     await this.authService.updatePassword(res, req.user, body)
+  }
+
+  @Roles('user')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Post('/address')
+  async addAddress(
+    @Res() res: Response,
+    @Req() req: IRequest,
+    @Body() body: AddressDTO
+  ) {
+    await this.authService.addAddress(res, req.user, body)
   }
 
   @ApiOperation({

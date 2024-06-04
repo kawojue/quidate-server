@@ -3,9 +3,9 @@ import {
     Matches,
     IsString,
     MinLength,
-    MaxLength,
     IsNotEmpty,
 } from 'class-validator'
+import { USER_REGEX } from 'utils/regExp'
 import { ApiProperty } from '@nestjs/swagger'
 import { Transform } from 'class-transformer'
 import { titleText, toLowerCase } from 'helpers/transformer'
@@ -22,16 +22,12 @@ export class EmailDto {
 export class UsernameDto {
     @ApiProperty({
         example: 'kawojue',
-        description: 'The username for the user.',
     })
     @IsString()
-    @MaxLength(23, {
-        message: "Username is too long"
-    })
-    @MinLength(2, {
-        message: "Username is too short"
-    })
     @IsNotEmpty()
+    @Matches(USER_REGEX, {
+        message: "Invalid username"
+    })
     @Transform(({ value }) => toLowerCase(value))
     username: string
 }

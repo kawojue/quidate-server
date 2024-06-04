@@ -565,7 +565,7 @@ export class WalletService {
         userByPhone = await this.prisma.user.findFirst({
           where: {
             profile: {
-              phone: {
+              phoneWithIsoCode: {
                 contains: identifier,
                 mode: 'insensitive',
               },
@@ -608,9 +608,7 @@ export class WalletService {
         return this.response.sendError(res, StatusCodes.BadRequest, 'Invalid amount')
       }
 
-      const wallet = await this.prisma.wallet.findUnique({
-        where: { userId: sub }
-      })
+      const wallet = await this.prisma.getUserWallet(sub)
 
       if (amount > wallet.ngnBalance) {
         return this.response.sendError(res, StatusCodes.UnprocessableEntity, 'Insufficient NGN Balance')
@@ -677,9 +675,7 @@ export class WalletService {
         return this.response.sendError(res, StatusCodes.BadRequest, 'Amount is too low')
       }
 
-      const wallet = await this.prisma.wallet.findUnique({
-        where: { userId: sub }
-      })
+      const wallet = await this.prisma.getUserWallet(sub)
 
       if (amount > wallet.usdBalance) {
         return this.response.sendError(res, StatusCodes.UnprocessableEntity, 'Insufficient USD Balance')
@@ -742,7 +738,7 @@ export class WalletService {
     { ref }: FundWalletDTO,
   ) {
     try {
-      const wallet = await this.prisma.wallet.findUnique({ where: { userId: sub } })
+      const wallet = await this.prisma.getUserWallet(sub)
 
       if (!wallet) {
         return this.response.sendError(res, StatusCodes.NotFound, 'Wallet not found')

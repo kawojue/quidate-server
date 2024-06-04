@@ -62,6 +62,7 @@ model Kyc {
     verified         Boolean   @default(false)
     id_no            String?   @unique
     additional_notes String?
+    country          String
     means_of_id      MeansOfID
     proof_of_id      File[]
     createdAt        DateTime  @default(now())

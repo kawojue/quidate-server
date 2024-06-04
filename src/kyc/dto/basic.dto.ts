@@ -1,4 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger'
+import { Transform } from 'class-transformer'
+import { titleText } from 'helpers/transformer'
 import { IsEnum, IsNotEmpty, IsString } from 'class-validator'
 
 enum MeansOfID {
@@ -8,7 +10,17 @@ enum MeansOfID {
     DriverLicense = "DriverLicense"
 }
 
-export class BasicKycDTO {
+export class CountryDTO {
+    @ApiProperty({
+        example: 'Nigeria'
+    })
+    @IsString()
+    @IsNotEmpty()
+    @Transform(({ value }) => titleText(value))
+    country: string
+}
+
+export class BasicKycDTO extends CountryDTO {
     @ApiProperty({
         example: 'A23-B45-C79'
     })

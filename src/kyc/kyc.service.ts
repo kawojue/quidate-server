@@ -26,7 +26,9 @@ export class KycService {
         res: Response,
         { sub }: ExpressUser,
         files: Array<Express.Multer.File>,
-        { id_no, means_of_id }: BasicKycDTO,
+        {
+            id_no, means_of_id, country
+        }: BasicKycDTO,
     ) {
         try {
             const user = await this.prisma.user.findUnique({
@@ -166,8 +168,9 @@ export class KycService {
                     }),
                     this.prisma.kyc.create({
                         data: {
-                            means_of_id, id_no: id_no,
-                            type: 'BASIC', verified: false,
+                            verified: true,
+                            country, means_of_id,
+                            id_no: id_no, type: 'BASIC',
                             user: { connect: { id: sub } },
                         }
                     })
@@ -242,9 +245,10 @@ export class KycService {
 
             await this.prisma.kyc.create({
                 data: {
-                    means_of_id, id_no: id_no,
+                    verified: false,
+                    country, means_of_id,
                     proof_of_id: proof_of_ids,
-                    type: 'BASIC', verified: false,
+                    id_no: id_no, type: 'BASIC',
                     user: { connect: { id: sub } },
                 }
             })
@@ -260,7 +264,7 @@ export class KycService {
     async utilityKyc(
         res: Response,
         { sub }: ExpressUser,
-        { additional_notes }: UtilityKycDTO,
+        { additional_notes, country }: UtilityKycDTO,
         files: Array<Express.Multer.File>,
     ) {
         try {
@@ -344,7 +348,7 @@ export class KycService {
 
             await this.prisma.kyc.create({
                 data: {
-                    additional_notes,
+                    additional_notes, country,
                     proof_of_id: proof_of_ids,
                     means_of_id: 'UtilityBill',
                     user: { connect: { id: sub } },

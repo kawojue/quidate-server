@@ -36,7 +36,7 @@ export class BasicKycDTO extends CountryDTO {
     means_of_id: MeansOfID
 
     @ApiProperty({
-        type: Array<Express.Multer.File>
+        type: [File]
     })
     proof_of_id: Array<Express.Multer.File>
 }

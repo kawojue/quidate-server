@@ -9,4 +9,9 @@ export class UtilityKycDTO extends CountryDTO {
     @IsString()
     @IsOptional()
     additional_notes: string
+
+    @ApiProperty({
+        type: [File]
+    })
+    proof_of_id: Array<Express.Multer.File>
 }

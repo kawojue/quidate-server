@@ -89,9 +89,9 @@ export class AuthService {
         }),
         this.prisma.profile.create({
           data: {
+            phoneWithCountryCode: `${countryCode}${phone}`,
             phone, countryCode, primaryAsset: 'BTC',
-            phoneWithIsoCode: `${countryCode}${phone}`,
-            user: { connect: { id: _id } }
+            user: { connect: { id: _id } },
           }
         }),
         this.prisma.wallet.create({

@@ -35,14 +35,10 @@ export class KycService {
                 where: { id: sub },
                 include: {
                     profile: {
-                        select: {
-                            phone: true
-                        }
+                        select: { phoneWithCountryCode: true }
                     },
                     level: {
-                        select: {
-                            name: true,
-                        }
+                        select: { name: true }
                     },
                 }
             })
@@ -130,7 +126,7 @@ export class KycService {
                 if (data?.phone) {
                     for (const tel of data.phone) {
                         const normalizedTel = normalizePhoneNumber(tel)
-                        for (const profileTel of user.profile.phone) {
+                        for (const profileTel of user.profile.phoneWithCountryCode) {
                             const normalizedProfileTel = normalizePhoneNumber(profileTel)
                             if (normalizedTel.endsWith(normalizedProfileTel) || normalizedProfileTel.endsWith(normalizedTel)) {
                                 percentage += 5

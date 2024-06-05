@@ -4,6 +4,11 @@ import {
     IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString
 } from 'class-validator'
 
+enum SortBy {
+    name = "name",
+    date = "date"
+}
+
 export class SearchDto {
     @ApiProperty({
         example: ' '
@@ -21,10 +26,19 @@ export class InfiniteScrollDto extends SearchDto {
     page: number
 
     @ApiProperty({
-        example: 50
+        example: 100
     })
     @IsOptional()
     limit: number
+}
+
+export class FetchDTO extends InfiniteScrollDto {
+    @ApiProperty({
+        enum: SortBy
+    })
+    @IsOptional()
+    @IsEnum(SortBy)
+    sortBy: SortBy
 }
 
 export class FetchProductsDto extends InfiniteScrollDto {

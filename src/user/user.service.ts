@@ -41,10 +41,10 @@ export class UserService {
           profile: {
             select: {
               pin: true,
-              phone: true,
               avatar: true,
               primaryAsset: true,
               email_verified: true,
+              phoneWithCountryCode: true,
             }
           },
         }
@@ -56,9 +56,9 @@ export class UserService {
         data: {
           email: user.email,
           level: user.level,
-          phone: profile.phone,
           username: user.username,
           fullname: user.fullName,
+          phone: profile.phoneWithCountryCode,
           primaryAsset: profile.primaryAsset,
           isPinCreated: profile.pin !== null,
           ...(await this.prisma.constraints(id)),

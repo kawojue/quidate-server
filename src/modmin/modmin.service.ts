@@ -9,6 +9,7 @@ import { LoginDto, RegisterDto } from './dto/auth.dto'
 import { ResponseService } from 'lib/response.service'
 import { BitPowrSdkService } from 'lib/bitPowr.service'
 import { EncryptionService } from 'lib/encryption.service'
+import { FetchDTO } from 'src/gift-card/dto/gift-card.dto'
 
 @Injectable()
 export class ModminService {
@@ -21,10 +22,6 @@ export class ModminService {
         private readonly encryptionService: EncryptionService,
     ) {
         this.bitPowerSdk = new BitPowrSdkService().getSdk()
-    }
-
-    private async generateToken({ sub, role }: JwtPayload): Promise<string> {
-        return await this.jwtService.signAsync({ sub, role })
     }
 
     async register(
@@ -85,10 +82,63 @@ export class ModminService {
             }
 
             this.response.sendSuccess(res, StatusCodes.OK, {
-                access_token: await this.generateToken({
+                access_token: await this.misc.generateNewAccessToken({
                     sub: modmin.id,
                     role: modmin.role,
-                })
+                    userStatus: modmin.status
+                }),
+                data: {
+                    role: modmin.role,
+                    email: modmin.email,
+                    fullname: modmin.fullName,
+                }
+            })
+        } catch (err) {
+            this.misc.handleServerError(res, err)
+        }
+    }
+
+    async toggleUserSuspension(res: Response, userId: string) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId }
+        })
+
+        if (!user) {
+            return this.response.sendError(res, StatusCodes.NotFound, "User not found")
+        }
+
+        const updatedUser = await this.prisma.user.update({
+            where: { id: userId },
+            data: { userStatus: user.userStatus === 'active' ? 'suspended' : 'active' },
+            select: {
+                id: true,
+                userStatus: true
+            }
+        })
+
+        this.response.sendSuccess(res, StatusCodes.OK, { data: updatedUser })
+    }
+
+    async fetchUsers(
+        res: Response,
+        {
+            search = '', sortBy,
+            page = 1, limit = 100,
+        }: FetchDTO
+    ) {
+        try {
+            search = search?.trim() ?? ''
+
+            limit = Number(limit)
+            const offset = (page - 1) * limit
+
+            const users = await this.prisma.user.findMany({
+                where: {
+                    OR: [
+                        { fullName: { contains: search, mode: 'insensitive' } },
+                        { email: { contains: search, mode: 'insensitive' } },
+                    ]
+                }
             })
         } catch (err) {
             this.misc.handleServerError(res, err)

@@ -551,13 +551,13 @@ export class WalletService {
         id: string
         fullName: string
         profile: {
-          phone: string
           avatar: {
             idx: string
             public_id: string
             public_url: string
             secure_url: string
           }
+          phoneWithCountryCode: string
         }
       } | null = null
 
@@ -565,7 +565,7 @@ export class WalletService {
         userByPhone = await this.prisma.user.findFirst({
           where: {
             profile: {
-              phoneWithIsoCode: {
+              phoneWithCountryCode: {
                 contains: identifier,
                 mode: 'insensitive',
               },
@@ -576,8 +576,8 @@ export class WalletService {
             fullName: true,
             profile: {
               select: {
-                phone: true,
                 avatar: true,
+                phoneWithCountryCode: true,
               }
             }
           },

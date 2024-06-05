@@ -27,7 +27,7 @@ export class KycService {
         { sub }: ExpressUser,
         files: Array<Express.Multer.File>,
         {
-            id_no, means_of_id, country
+            id_no, means_of_id, country, dob
         }: BasicKycDTO,
     ) {
         try {
@@ -246,6 +246,7 @@ export class KycService {
             await this.prisma.kyc.create({
                 data: {
                     verified: false,
+                    dob: new Date(dob),
                     country, means_of_id,
                     proof_of_id: proof_of_ids,
                     id_no: id_no, type: 'BASIC',

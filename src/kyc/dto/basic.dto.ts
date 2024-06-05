@@ -1,12 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger'
 import { Transform } from 'class-transformer'
 import { titleText } from 'helpers/transformer'
-import { IsEnum, IsNotEmpty, IsString } from 'class-validator'
+import { IsDateString, IsEnum, IsNotEmpty, IsString } from 'class-validator'
 
 enum MeansOfID {
     NIN = "NIN",
     BVN = "BVN",
     Passport = "Passport",
+    VotersCard = "VotersCard",
     DriverLicense = "DriverLicense"
 }
 
@@ -34,6 +35,13 @@ export class BasicKycDTO extends CountryDTO {
     @IsEnum(MeansOfID)
     @IsNotEmpty()
     means_of_id: MeansOfID
+
+    @ApiProperty({
+        example: new Date(2003, 8, 10).toISOString()
+    })
+    @IsNotEmpty()
+    @IsDateString()
+    dob: string
 
     @ApiProperty({
         type: [File]

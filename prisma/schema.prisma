@@ -76,6 +76,7 @@ model Kyc {
     country          String
     means_of_id      MeansOfID
     proof_of_id      File[]
+    dob              DateTime?
     createdAt        DateTime  @default(now())
     updatedAt        DateTime  @updatedAt
     user             User      @relation(fields: [userId], references: [id])
@@ -550,6 +551,7 @@ enum MeansOfID {
     NIN
     BVN
     Passport
+    VotersCard
     UtilityBill
     DriverLicense
 }

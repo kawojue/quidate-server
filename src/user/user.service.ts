@@ -248,8 +248,7 @@ export class UserService {
   ) {
     try {
       if (!ref && !idempotencyKey) {
-        this.response.sendError(res, StatusCodes.BadRequest, "Empty query")
-        return
+        return this.response.sendError(res, StatusCodes.BadRequest, "Either reference or idempotemcy key is required")
       }
 
       const where = idempotencyKey

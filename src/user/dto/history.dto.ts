@@ -1,5 +1,5 @@
 import { RcptDto } from './recipient.dto'
-import { IsOptional } from 'class-validator'
+import { IsEnum, IsOptional } from 'class-validator'
 import { ApiProperty } from '@nestjs/swagger'
 import { TransactionSource, TransactionType, TransferStatus } from '@prisma/client'
 
@@ -25,6 +25,7 @@ export class TxHistoriesDto extends RcptDto {
         default: null,
     })
     @IsOptional()
+    @IsEnum(TransactionSource)
     source?: TransactionSource
 
     @ApiProperty({
@@ -32,6 +33,7 @@ export class TxHistoriesDto extends RcptDto {
         default: null,
     })
     @IsOptional()
+    @IsEnum(TransactionType)
     type?: TransactionType
 
     @ApiProperty({
@@ -39,6 +41,7 @@ export class TxHistoriesDto extends RcptDto {
         default: null,
     })
     @IsOptional()
+    @IsEnum(TransferStatus)
     status?: TransferStatus
 }
 
@@ -64,6 +67,7 @@ export class TxAggregateDTO {
         default: null,
     })
     @IsOptional()
+    @IsEnum(TransactionSource)
     source?: TransactionSource
 
     @ApiProperty({
@@ -71,6 +75,7 @@ export class TxAggregateDTO {
         default: null,
     })
     @IsOptional()
+    @IsEnum(TransactionType)
     type?: TransactionType
 
     @ApiProperty({
@@ -78,6 +83,7 @@ export class TxAggregateDTO {
         default: null,
     })
     @IsOptional()
+    @IsEnum(TransferStatus)
     status?: TransferStatus
 }
 

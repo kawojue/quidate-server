@@ -123,24 +123,6 @@ export class UserService {
       limit = Number(limit)
       const offset = (page - 1) * limit
 
-      if (type && !['DISBURSEMENT', 'DEPOSIT', 'CONVERSION'].includes(type.toUpperCase())) {
-        this.response.sendError(res, StatusCodes.BadRequest, 'Invalid type query')
-        return
-      }
-
-      if (source && !['fiat', 'crypto'].includes(source.toLowerCase())) {
-        this.response.sendError(res, StatusCodes.BadRequest, 'Invalid source query')
-        return
-      }
-
-      if (
-        status &&
-        !['SUCCESS', 'FAILED', 'REVERSED', 'RECEIVED', 'PENDING', 'COMPLETED'].includes(status.toUpperCase())
-      ) {
-        this.response.sendError(res, StatusCodes.BadRequest, 'Invalid status query')
-        return
-      }
-
       const txHistories = await this.prisma.transactionHistory.findMany({
         where: {
           userId,
@@ -148,9 +130,9 @@ export class UserService {
             gte: startDate !== '' ? new Date(startDate) : new Date(0),
             lte: endDate !== '' ? new Date(endDate) : new Date(),
           },
-          type: type !== null ? type as TransactionType : undefined,
-          status: status !== null ? status as TransferStatus : undefined,
-          source: source !== null ? source as TransactionSource : undefined,
+          type: type !== null ? type : undefined,
+          status: status !== null ? status : undefined,
+          source: source !== null ? source : undefined,
         },
         skip: offset,
         take: limit,
@@ -166,9 +148,9 @@ export class UserService {
             gte: startDate !== '' ? new Date(startDate) : new Date(0),
             lte: endDate !== '' ? new Date(endDate) : new Date(),
           },
-          type: type !== null ? type as TransactionType : undefined,
-          status: status !== null ? status as TransferStatus : undefined,
-          source: source !== null ? source as TransactionSource : undefined,
+          type: type !== null ? type : undefined,
+          status: status !== null ? status : undefined,
+          source: source !== null ? source : undefined,
         }
       })
 

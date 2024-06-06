@@ -40,15 +40,11 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
             }
         })
 
-        const profile = await this.profile.findUnique({
-            where: { userId },
-            select: { lastPinChanged: true }
-        })
-
         if (!user) {
             throw new Error('User not found')
         }
 
+        const profile = await this.getProfile(userId)
         const { lastLoggedInAt, lastPasswordChanged, lastUsedBiometricAt } = user
 
         if (type === 'Login') {

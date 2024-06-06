@@ -95,7 +95,7 @@ export class WalletService {
       }
 
       const linkedBank = await this.prisma.linkedBank.findUnique({
-        where: { id: linkedBankId },
+        where: { id: linkedBankId, userId },
       })
 
       if (!linkedBank) {

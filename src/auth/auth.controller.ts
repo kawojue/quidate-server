@@ -1,13 +1,12 @@
-import {
-  UpdatePasswordDto, OtpDto,
-  ResendOTPDto, ResetPasswordDto,
-} from './dto/password-auth.dto'
 import { Roles } from 'src/role.decorator'
 import { PinDto } from './dto/pin-auth.dto'
 import { Request, Response } from 'express'
 import { ReportDto } from './dto/report.dto'
 import { AuthGuard } from '@nestjs/passport'
 import { AuthService } from './auth.service'
+import {
+  UpdatePasswordDto, OtpDto, ResetPasswordDto,
+} from './dto/password-auth.dto'
 import { AddressDTO } from './dto/address.dto'
 import { RolesGuard } from 'src/jwt/jwt-auth.guard'
 import {
@@ -16,7 +15,7 @@ import {
 } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { SkipThrottle, Throttle } from '@nestjs/throttler'
-import { CreateAuthDto, UsernameDto } from './dto/create-auth.dto'
+import { CreateAuthDto, EmailDto, UsernameDto } from './dto/create-auth.dto'
 import { LoginAuthDto, LoginBiometricDto } from './dto/login-auth.dto'
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger'
 
@@ -58,7 +57,7 @@ export class AuthController {
   }
 
   @Post("/otp/request")
-  async resendOtp(@Res() res: Response, @Body() { email }: ResendOTPDto) {
+  async resendOtp(@Res() res: Response, @Body() { email }: EmailDto) {
     await this.authService.resendOTP(res, email)
   }
 

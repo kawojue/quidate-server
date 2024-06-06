@@ -6,6 +6,7 @@ import {
   InitiateLocalTransferDTO, GetReceiverDTO,
   AmountDTO, InitiateWithdrawalDTO, TxSourceDTO,
 } from './dto/tx.dto'
+import { toUpperCase } from 'helpers/transformer'
 import { FundWalletDTO } from './dto/deposit.dto'
 import { genRandomCode } from 'helpers/generator'
 import { getIpAddress } from 'helpers/getIPAddress'
@@ -17,7 +18,6 @@ import { ResponseService } from 'lib/response.service'
 import { BitPowrSdkService } from 'lib/bitPowr.service'
 import { EncryptionService } from 'lib/encryption.service'
 import { PriceConversionService } from 'lib/price-conversion'
-import { toLowerCase, toUpperCase } from 'helpers/transformer'
 import { PaystackService } from 'lib/Paystack/paystack.service'
 import { BankDetailsDTO, ValidateBankDTO } from './dto/bank.dto'
 
@@ -533,10 +533,8 @@ export class WalletService {
 
   async getReceiver(res: Response, { phoneOrUsername }: GetReceiverDTO) {
     try {
-      const identifier = toLowerCase(phoneOrUsername)
-
       const userByUsername = await this.prisma.user.findUnique({
-        where: { username: identifier },
+        where: { username: phoneOrUsername },
         select: {
           id: true,
           username: true,
@@ -561,12 +559,12 @@ export class WalletService {
         }
       } | null = null
 
-      if (identifier.length >= 10) {
+      if (phoneOrUsername.length >= 10) {
         userByPhone = await this.prisma.user.findFirst({
           where: {
             profile: {
               phoneWithCountryCode: {
-                contains: identifier,
+                contains: phoneOrUsername,
                 mode: 'insensitive',
               },
             },
@@ -789,9 +787,26 @@ export class WalletService {
   async linkBankAccount(
     res: Response,
     { sub }: ExpressUser,
-    { accountNumber, bankCode }: BankDetailsDTO
+    { accountNumber, bankCode, otp }: BankDetailsDTO
   ) {
     try {
+      const totp = await this.prisma.totp.findUnique({
+        where: { otp, userId: sub }
+      })
+
+      if (!totp || !totp.otp_expiry) {
+        return this.response.sendError(res, StatusCodes.Unauthorized, "Incorrect OTP")
+      }
+
+      if (new Date() > new Date(totp.otp_expiry)) {
+        this.response.sendError(res, StatusCodes.Forbidden, "OTP has expired")
+        await this.prisma.totp.deleteMany({
+          where: { userId: totp.userId },
+        })
+
+        return
+      }
+
       const linkedAccounts = await this.prisma.linkedBank.findMany({
         where: { userId: sub },
         orderBy: { createdAt: 'desc' },
@@ -866,6 +881,10 @@ export class WalletService {
               user: { connect: { id: sub } },
             },
           })
+
+        await this.prisma.totp.deleteMany({
+          where: { userId: sub }
+        })
 
         this.response.sendSuccess(res, StatusCodes.Created, {
           data,

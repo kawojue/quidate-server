@@ -1,14 +1,12 @@
 import {
-    IsNotEmpty, IsString,
-    MinLength, Matches,
-    IsEmail, MaxLength,
+    IsNotEmpty, Matches,
+    MinLength, IsString,
 } from 'class-validator'
 import { ApiProperty } from '@nestjs/swagger'
 
 export class UpdatePasswordDto {
     @ApiProperty({
         example: 'P@ssw0rd1',
-        description: 'The old password of the user.',
     })
     @IsNotEmpty({
         message: "Old password cannot be empty"
@@ -17,7 +15,6 @@ export class UpdatePasswordDto {
 
     @ApiProperty({
         example: 'P@ssw0rd1',
-        description: 'The password for the user.',
     })
     @IsString()
     @MinLength(6, {
@@ -30,7 +27,6 @@ export class UpdatePasswordDto {
 
     @ApiProperty({
         example: 'P@ssw0rd1',
-        description: 'Password confirmation for the user.',
     })
     @IsString()
     password2: string
@@ -38,20 +34,19 @@ export class UpdatePasswordDto {
 
 export class OtpDto {
     @ApiProperty({
-        example: '001122',
-        description: 'The OTP of the user.',
+        example: '234517'
     })
     @IsString()
-    @MinLength(6)
-    @MaxLength(6)
-    @IsNotEmpty({ message: "OTP field  cannot be empty" })
+    @Matches(/^\d{6}$/, {
+        message: 'OTP must be a 4-digit number'
+    })
+    @IsNotEmpty()
     otp: string
 }
 
 export class ResetPasswordDto extends OtpDto {
     @ApiProperty({
         example: 'P@ssw0rd1',
-        description: 'The password for the user.',
     })
     @IsString()
     @MinLength(6, {
@@ -64,18 +59,7 @@ export class ResetPasswordDto extends OtpDto {
 
     @ApiProperty({
         example: 'P@ssw0rd1',
-        description: 'Password confirmation for the user.',
     })
     @IsString()
     password2: string
-}
-
-export class ResendOTPDto {
-    @ApiProperty({
-        example: 'john.doe@example.com',
-        description: 'The email address for the user.',
-    })
-    @IsEmail({}, { message: 'Invalid email format' })
-    @IsNotEmpty({ message: 'Email cannot be empty' })
-    email: string
 }

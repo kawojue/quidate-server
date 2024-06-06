@@ -350,7 +350,6 @@ export class AuthService {
     try {
       let mail: boolean = false
       let eligible: boolean = false
-      email = email.trim().toLowerCase()
 
       const user = await this.prisma.user.findUnique({
         where: { email }
@@ -360,7 +359,7 @@ export class AuthService {
         return this.response.sendError(res, StatusCodes.NotFound, "Account does not exist")
       }
 
-      const totp = await this.prisma.totp.findUnique({
+      const totp = await this.prisma.totp.findFirst({
         where: { userId: user.id }
       })
 
@@ -399,9 +398,7 @@ export class AuthService {
 
       if (eligible) {
         await this.prisma.totp.update({
-          where: {
-            userId: user.id
-          },
+          where: { userId: user.id },
           data: {
             otp: otp.totp,
             otp_expiry: new Date(otp.totp_expiry)
@@ -434,14 +431,10 @@ export class AuthService {
       })
 
       if (!totp || !totp.otp_expiry) {
-        this.response.sendError(res, StatusCodes.Unauthorized, "Invalid OTP")
-        return
+        return this.response.sendError(res, StatusCodes.Unauthorized, "Incorrect OTP")
       }
 
-      const currentTime = new Date()
-      const otp_expiry = new Date(totp.otp_expiry)
-
-      if (currentTime > otp_expiry) {
+      if (new Date() > new Date(totp.otp_expiry)) {
         this.response.sendError(res, StatusCodes.Forbidden, "OTP has expired")
         await this.prisma.totp.deleteMany({
           where: { userId: totp.userId },

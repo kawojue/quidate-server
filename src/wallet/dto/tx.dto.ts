@@ -3,6 +3,8 @@ import {
     IsString, MaxLength, MinLength, IsEnum,
 } from 'class-validator'
 import { ApiProperty } from '@nestjs/swagger'
+import { Transform } from 'class-transformer'
+import { toLowerCase } from 'helpers/transformer'
 import { TransactionCurrency } from '@prisma/client'
 
 
@@ -22,6 +24,7 @@ export class GetReceiverDTO {
     @IsNotEmpty()
     @MinLength(3)
     @MaxLength(14)
+    @Transform(({ value }) => toLowerCase(value))
     phoneOrUsername: string
 }
 

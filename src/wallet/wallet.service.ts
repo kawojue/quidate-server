@@ -769,7 +769,7 @@ export class WalletService {
             amount: amount,
             authorization_code,
             ip: data.ip_address,
-            ref: `deposit-${ref}}`,
+            ref: `deposit-${ref}`,
             user: { connect: { id: sub } },
             broadcastedAt: new Date(data.transaction_date),
             status: toUpperCase(data.status) as TransferStatus,

@@ -49,7 +49,7 @@ import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/c
     WalletModule,
     ModminModule,
     WehbooksModule,
-    // RealtimeModule,
+    RealtimeModule,
     GiftCardModule,
     CloudinaryModule,
     KycModule,

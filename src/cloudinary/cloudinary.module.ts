@@ -14,7 +14,7 @@ export class CloudinaryModule {
                     useValue: options,
                 },
             ],
-            exports: [CloudinaryService],
+            exports: [CloudinaryService]
         }
     }
 }

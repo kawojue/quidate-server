@@ -124,7 +124,7 @@ export class WalletController {
     await this.walletService.sendInternalNGNTOUSD(res, req.user, body)
   }
 
-  @Post('/usd-usd')
+  @Post('/usd-ngn')
   @Roles(Role.user)
   async sendInternalUSDTONGN(
     @Res() res: Response,

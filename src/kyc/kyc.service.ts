@@ -202,7 +202,7 @@ export class KycService {
                     }
                 })
 
-                proof_of_ids = (await Promise.all(promises)).filter((result): result is Attachment => !!result)
+                proof_of_ids = await Promise.all(promises)
             } catch (err) {
                 try {
                     if (proof_of_ids.length) {
@@ -305,7 +305,7 @@ export class KycService {
                     }
                 })
 
-                proof_of_ids = (await Promise.all(promises)).filter((result): result is Attachment => !!result)
+                proof_of_ids = await Promise.all(promises)
             } catch (err) {
                 try {
                     if (proof_of_ids.length) {

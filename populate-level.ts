@@ -1,12 +1,12 @@
-import { ObjectId } from 'mongodb'
+import { v4 as uuidv4 } from 'uuid'
 import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
 async function main() {
-    const tierOneConstraintId = new ObjectId().toString()
-    const tierTwoConstraintId = new ObjectId().toString()
-    const tierThreeConstraintId = new ObjectId().toString()
+    const tierOneConstraintId = uuidv4()
+    const tierTwoConstraintId = uuidv4()
+    const tierThreeConstraintId = uuidv4()
 
     await prisma.levelConstraint.upsert({
         where: { id: tierOneConstraintId },
@@ -42,7 +42,7 @@ async function main() {
         where: { name: 'TIER_1' },
         update: {},
         create: {
-            id: new ObjectId().toString(),
+            id: uuidv4(),
             name: 'TIER_1',
             constraintId: tierOneConstraintId,
         },
@@ -52,7 +52,7 @@ async function main() {
         where: { name: 'TIER_2' },
         update: {},
         create: {
-            id: new ObjectId().toString(),
+            id: uuidv4(),
             name: 'TIER_2',
             constraintId: tierTwoConstraintId,
         },
@@ -62,7 +62,7 @@ async function main() {
         where: { name: 'TIER_3' },
         update: {},
         create: {
-            id: new ObjectId().toString(),
+            id: uuidv4(),
             name: 'TIER_3',
             constraintId: tierThreeConstraintId,
         },

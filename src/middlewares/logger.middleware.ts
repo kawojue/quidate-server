@@ -49,13 +49,13 @@ export class LoggerMiddleware implements NestMiddleware {
             throw new HttpException('Too Many Requests', 429)
         }
 
-        // const blacklisted = await this.prisma.blacklistedIP.findUnique({
-        //     where: { ip: remoteAddr }
-        // })
+        const blacklisted = await this.prisma.blacklistedIP.findUnique({
+            where: { ip: remoteAddr }
+        })
 
-        // if (blacklisted) {
-        //     throw new HttpException("Your IP has been blacklisted", 403)
-        // }
+        if (blacklisted) {
+            throw new HttpException("Your IP has been blacklisted", 403)
+        }
 
         const log = {
             query,

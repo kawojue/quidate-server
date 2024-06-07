@@ -208,6 +208,7 @@ export class AuthService {
           primaryAsset: user.profile.primaryAsset,
           ...(await this.prisma.constraints(user.id)),
           email_verified: user.profile.email_verified,
+          // @ts-ignore
           avatar: user.profile.avatar?.secure_url ?? null,
         },
         message: "Login Successful",
@@ -262,6 +263,7 @@ export class AuthService {
           primaryAsset: user.profile.primaryAsset,
           ...(await this.prisma.constraints(user.id)),
           email_verified: user.profile.email_verified,
+          // @ts-ignore
           avatar: user.profile.avatar?.secure_url ?? null,
         },
         message: "Login Successful",
@@ -559,7 +561,9 @@ export class AuthService {
 
       const profile = await this.prisma.getProfile(sub)
 
+      // @ts-ignore
       if (profile.avatar?.public_id) {
+        // @ts-ignore
         await this.cloudinary.delete(profile.avatar.public_id)
       }
 
@@ -721,10 +725,10 @@ export class AuthService {
         return this.response.sendError(res, StatusCodes.BadRequest, 'Only a maximum of three files is allowed')
       }
 
-      let filesArray = [] as Attachment[]
+      let filesArray = []
       if (attachments.length > 0) {
         try {
-          const results = await Promise.all(attachments.map(async (attachment) => {
+          filesArray = await Promise.all(attachments.map(async (attachment) => {
             const MAX_SIZE = 5 << 20
             if (attachment.size > MAX_SIZE) {
               return this.response.sendError(res, StatusCodes.PayloadTooLarge, `${attachment.originalname} is too large`)
@@ -746,8 +750,6 @@ export class AuthService {
               secure_url: response.secure_url,
             }
           }))
-
-          filesArray = results.filter((result): result is Attachment => !!result)
         } catch (err) {
           try {
             if (filesArray.length > 0) {
@@ -758,8 +760,7 @@ export class AuthService {
               }
             }
           } catch (err) {
-            console.error(err)
-            this.response.sendError(res, StatusCodes.InternalServerError, 'Error uploading attachments')
+            this.misc.handleServerError(res, err, 'Error uploading attachments')
           }
         }
       }

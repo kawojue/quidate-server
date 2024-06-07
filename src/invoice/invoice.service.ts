@@ -243,7 +243,7 @@ export class InvoiceService {
                     accountName,
                     paymentType,
                     accountNumber,
-                    items: invoiceItems,
+                    items: invoiceItems as any,
                     ...generatedAddress,
                     assetType,
                     walletAddress,

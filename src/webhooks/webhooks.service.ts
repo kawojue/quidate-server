@@ -265,7 +265,7 @@ export class WebhooksService {
         }
 
         if ((existingTransaction && existingTransaction.status === 'PENDING' && data.status === 'SUCCESS') || (!existingTransaction && data.status === 'SUCCESS')) {
-          const ref = `crypto-transfer-${data.label}-${data.idempotencyKey}`
+          const ref = `transfer-${data.idempotencyKey}`
           const history = await this.getTransaction(ref)
 
           if (!history) {
@@ -294,8 +294,8 @@ export class WebhooksService {
   private async addCryptoDepositTransactionHistory(req: Request, data: TransactionHistory) {
     await this.prisma.transactionHistory.create({
       data: {
-        source: 'crypto',
         ref: data.ref,
+        source: 'crypto',
         ip: getIpAddress(req),
         dollarRate: data.dollarRate,
         nairaAmount: data.nairaAmount,
@@ -335,7 +335,7 @@ export class WebhooksService {
         ip: getIpAddress(req),
         amount: data.nairaAmount,
         settlementAmount: data.settlementAmount,
-        ref: `crypto-transfer-${data.label}-${data.idempotencyKey}`,
+        ref: `transfer-${data.idempotencyKey}`,
         totalFee: data.totalFee,
         processingFee: data.processingFee,
         assetType: data.assetType,

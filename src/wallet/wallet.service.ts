@@ -203,7 +203,7 @@ export class WalletService {
         source: 'balance',
         reason: `Quidate - ${user.fullName}`,
         amount: amountInKobo,
-        reference: `transfer-${userId}-${genRandomCode()}`,
+        reference: `transfer-${genRandomCode()}`,
       })
 
       await Promise.all([
@@ -430,10 +430,10 @@ export class WalletService {
       }
 
       const ip = getIpAddress(req)
-      const randomCode = genRandomCode()
-      const ref = `transfer-${user.id}-${randomCode}`
       const currentDate = new Date()
-      const transfer_code = `${receiver.id}-${user.id}-${randomCode}`
+      const randomCode = genRandomCode()
+      const ref = `transfer-${randomCode}`
+      const transfer_code = `${randomCode}`
 
       const senderHistory = {
         ip,
@@ -493,7 +493,6 @@ export class WalletService {
           this.prisma.transactionHistory.create({
             data: {
               ip,
-              ref,
               amount,
               totalFee: 0,
               source: 'fiat',
@@ -503,6 +502,7 @@ export class WalletService {
               currency: tx_source,
               inward_source: tx_source,
               settlementAmount: amount,
+              ref: `${genRandomCode()}`,
               sourceAccountName: user.fullName,
               destinationAccountName: receiver.fullName,
               narration: narration || `Quidate - ${user.username}`,
@@ -621,7 +621,7 @@ export class WalletService {
             dollarAmount,
             dollarRate: rate,
             currency: "USD",
-            ref: `conversion-${sub}-${genRandomCode()}`,
+            ref: `conversion-${genRandomCode()}`,
             status: 'COMPLETED',
             source: 'fiat',
             channel: 'internal',
@@ -689,7 +689,7 @@ export class WalletService {
             amount: ngnAmount,
             currency: "NGN",
             dollarAmount: amount,
-            ref: `conversion-${sub}-${genRandomCode()}`,
+            ref: `conversion-${genRandomCode()}`,
             status: 'COMPLETED',
             source: 'fiat',
             type: 'CONVERSION',

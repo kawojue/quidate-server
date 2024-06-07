@@ -151,7 +151,7 @@ export class GiftCardService {
                 senderName: user.fullName,
                 recipientEmail: user.email,
                 unitPrice, productId, quantity,
-                customIdentifier: `${sub}-${genRandomCode()}`
+                customIdentifier: `${genRandomCode()}`
             }
 
             const order = await this.consumer.sendRequest<GiftCardTransaction>('POST', 'orders', payload)

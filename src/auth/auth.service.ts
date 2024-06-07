@@ -63,9 +63,9 @@ export class AuthService {
 
       const ALLOWED_CONTINENTS = ['Africa']
       const ip_info = await this.whois.getInfo(req)
-      if (!ALLOWED_CONTINENTS.includes(ip_info.continent)) {
-        return this.response.sendError(res, StatusCodes.Forbidden, "Your Country is not allowed")
-      }
+      // if (!ALLOWED_CONTINENTS.includes(ip_info.continent)) {
+      //   return this.response.sendError(res, StatusCodes.Forbidden, "Your Country is not allowed")
+      // }
 
       const tierOne = await this.prisma.level.findUnique({
         where: { name: 'TIER_1' },

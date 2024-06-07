@@ -62,6 +62,7 @@ export class UserService {
           isPinCreated: profile.pin !== null,
           ...(await this.prisma.constraints(id)),
           email_verified: user.profile.email_verified,
+          // @ts-ignore
           avatar: profile?.avatar?.secure_url ?? null,
           dailyWithdrawalAmount: user.dailyWithdrawalAmount,
         },

@@ -36,7 +36,7 @@ model User {
     lastUsedCredAt        DateTime?
     lastLoggedInAt        DateTime?
     lastPasswordChanged   DateTime             @default(now())
-    level                 Level                @relation(fields: [levelId], references: [id])
+    level                 Level                @relation(fields: [levelId], references: [id], onDelete: Cascade)
     levelId               String               @db.Uuid
 }
 
@@ -51,7 +51,7 @@ model Profile {
     primaryAsset         AssetType?
     avatar               Json?
     email_verified       Boolean    @default(false)
-    user                 User       @relation(fields: [userId], references: [id])
+    user                 User       @relation(fields: [userId], references: [id], onDelete: Cascade)
     userId               String     @unique @db.Uuid
 }
 
@@ -63,7 +63,7 @@ model Address {
     city        String?
     country     String?
     postal_code String?
-    user        User    @relation(fields: [userId], references: [id])
+    user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
     userId      String  @unique @db.Uuid
 }
 
@@ -79,7 +79,7 @@ model Kyc {
     dob              DateTime?
     createdAt        DateTime  @default(now())
     updatedAt        DateTime  @updatedAt
-    user             User      @relation(fields: [userId], references: [id])
+    user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
     userId           String    @db.Uuid
 }
 
@@ -194,7 +194,7 @@ model Totp {
     id         String    @id @default(uuid()) @db.Uuid
     otp        String?
     otp_expiry DateTime?
-    user       User      @relation(fields: [userId], references: [id])
+    user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
     userId     String    @unique @db.Uuid
 }
 
@@ -218,7 +218,7 @@ model Log {
     responsedAt         DateTime
     user                User?    @relation(fields: [userId], references: [id])
     userId              String?  @unique @db.Uuid
-    modmin              Modmin?  @relation(fields: [modminId], references: [id])
+    modmin              Modmin?  @relation(fields: [modminId], references: [id], onDelete: Cascade)
     modminId            String?  @unique @db.Uuid
 }
 
@@ -235,7 +235,7 @@ model Wallet {
     lastDepoistedAt     DateTime?
     createdAt           DateTime             @default(now())
     updatedAt           DateTime             @updatedAt
-    user                User                 @relation(fields: [userId], references: [id])
+    user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
     userId              String               @unique @db.Uuid
 }
 
@@ -248,7 +248,7 @@ model LinkedBank {
     primary       Boolean  @default(false)
     updatedAt     DateTime @updatedAt
     createdAt     DateTime @default(now())
-    user          User     @relation(fields: [userId], references: [id])
+    user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
     userId        String   @unique @db.Uuid
 }
 
@@ -268,7 +268,7 @@ model Recipient {
     authorization_code String?
     fullname           String?
     username           String?
-    user               User          @relation(fields: [userId], references: [id])
+    user               User          @relation(fields: [userId], references: [id], onDelete: Cascade)
     userId             String        @unique @db.Uuid
     updatedAt          DateTime
 }
@@ -318,7 +318,7 @@ model WalletAddress {
     addressContractIdentifier String?
     deploymentParams          Json?
     lastUsedAt                DateTime? @db.Date
-    user                      User?     @relation(fields: [userId], references: [id])
+    user                      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
     userId                    String    @unique @db.Uuid
 }
 
@@ -369,7 +369,7 @@ model Asset {
     pending            String        @default("0.00")
     blocked            String        @default("0.00")
     createdAt          DateTime
-    account            walletAccount @relation(fields: [accountId], references: [id])
+    account            walletAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
     accountId          String        @unique @db.Uuid
 }
 
@@ -424,7 +424,7 @@ model TransactionHistory {
     narration                String?
     authorization_code       String?
     updatedAt                DateTime             @updatedAt
-    user                     User                 @relation(fields: [userId], references: [id])
+    user                     User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
     userId                   String               @unique @db.Uuid
 }
 
@@ -436,7 +436,7 @@ model Notification {
     hash        String?  @unique
     reference   String?
     notifiedAt  DateTime @default(now())
-    user        User     @relation(fields: [userId], references: [id])
+    user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
     userId      String   @unique @db.Uuid
 }
 
@@ -467,7 +467,7 @@ model Invoice {
     items         Json[]
     paymentType   TransactionSource
     createdAt     DateTime            @default(now())
-    user          User                @relation(fields: [userId], references: [id])
+    user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
     userId        String              @unique @db.Uuid
 }
 
@@ -556,18 +556,3 @@ enum MeansOfID {
     UtilityBill
     DriverLicense
 }
-
-// type File {
-//     idx        String @default(uuid())
-//     public_id  String
-//     public_url String
-//     secure_url String
-// }
-
-// type Item {
-//     idx      String @default(uuid())
-//     name     String
-//     rate     Float?
-//     amount   Float?
-//     quantity Float?
-// }

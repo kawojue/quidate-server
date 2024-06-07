@@ -1,6 +1,7 @@
-import { OtpDto } from './password-auth.dto'
 import { ApiProperty } from '@nestjs/swagger'
-import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator'
+import {
+    IsOptional, IsString, Matches, MaxLength, MinLength
+} from 'class-validator'
 
 export class PinDto {
     @ApiProperty({
@@ -30,11 +31,12 @@ export class PinDto {
     pin2: string
 
     @ApiProperty({
-        example: '123456',
+        example: '234517'
     })
     @IsString()
-    @MinLength(6)
-    @MaxLength(6)
+    @Matches(/^\d{6}$/, {
+        message: 'OTP must be a 6-digit number'
+    })
     @IsOptional()
     otp: string
 }

@@ -15,9 +15,9 @@ import {
 } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { SkipThrottle, Throttle } from '@nestjs/throttler'
-import { CreateAuthDto, EmailDto, UsernameDto } from './dto/create-auth.dto'
 import { LoginAuthDto, LoginBiometricDto } from './dto/login-auth.dto'
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger'
+import { CreateAuthDto, EmailDto, UsernameDto } from './dto/create-auth.dto'
 
 @ApiTags('Auth')
 @Controller('auth')

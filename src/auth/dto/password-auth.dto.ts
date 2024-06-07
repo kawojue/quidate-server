@@ -38,7 +38,7 @@ export class OtpDto {
     })
     @IsString()
     @Matches(/^\d{6}$/, {
-        message: 'OTP must be a 4-digit number'
+        message: 'OTP must be a 6-digit number'
     })
     @IsNotEmpty()
     otp: string

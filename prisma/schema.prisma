@@ -3,12 +3,12 @@ generator client {
 }
 
 datasource db {
-    provider = "mongodb"
+    provider = "postgresql"
     url      = env("DATABASE_URL")
 }
 
 model User {
-    id                    String               @id @default(auto()) @map("_id") @db.ObjectId
+    id                    String               @id @default(uuid()) @db.Uuid
     fullName              String
     password              String
     email                 String               @unique
@@ -37,11 +37,11 @@ model User {
     lastLoggedInAt        DateTime?
     lastPasswordChanged   DateTime             @default(now())
     level                 Level                @relation(fields: [levelId], references: [id])
-    levelId               String               @db.ObjectId
+    levelId               String               @db.Uuid
 }
 
 model Profile {
-    id                   String     @id @default(auto()) @map("_id") @db.ObjectId
+    id                   String     @id @default(uuid()) @db.Uuid
     phone                String     @unique
     countryCode          String
     phoneWithCountryCode String?
@@ -49,14 +49,14 @@ model Profile {
     lastPinChanged       DateTime?
     deviceToken          String?
     primaryAsset         AssetType?
-    avatar               File?
+    avatar               Json?
     email_verified       Boolean    @default(false)
     user                 User       @relation(fields: [userId], references: [id])
-    userId               String     @unique @db.ObjectId
+    userId               String     @unique @db.Uuid
 }
 
 model Address {
-    id          String  @id @default(auto()) @map("_id") @db.ObjectId
+    id          String  @id @default(uuid()) @db.Uuid
     line1       String?
     lin2        String?
     state       String?
@@ -64,31 +64,31 @@ model Address {
     country     String?
     postal_code String?
     user        User    @relation(fields: [userId], references: [id])
-    userId      String  @unique @db.ObjectId
+    userId      String  @unique @db.Uuid
 }
 
 model Kyc {
-    id               String    @id @default(auto()) @map("_id") @db.ObjectId
+    id               String    @id @default(uuid()) @db.Uuid
     type             KycType
     verified         Boolean   @default(false)
     id_no            String?   @unique
     additional_notes String?
     country          String
     means_of_id      MeansOfID
-    proof_of_id      File[]
+    proof_of_id      Json[]
     dob              DateTime?
     createdAt        DateTime  @default(now())
     updatedAt        DateTime  @updatedAt
     user             User      @relation(fields: [userId], references: [id])
-    userId           String    @db.ObjectId
+    userId           String    @db.Uuid
 }
 
 model Ip {
-    id        String   @id @default(auto()) @map("_id") @db.ObjectId
+    id        String   @id @default(uuid()) @db.Uuid
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
     user      User     @relation(fields: [userId], references: [id])
-    userId    String   @unique @db.ObjectId
+    userId    String   @unique @db.Uuid
 
     ip               String?
     type             String?
@@ -122,48 +122,48 @@ model Ip {
 }
 
 model Level {
-    id           String          @id @default(auto()) @map("_id") @db.ObjectId
+    id           String          @id @default(uuid()) @db.Uuid
     name         LeveLName       @unique @default(TIER_1)
     constraints  LevelConstraint @relation(fields: [constraintId], references: [id])
-    constraintId String          @unique @db.ObjectId
+    constraintId String          @unique @db.Uuid
     users        User[]
 }
 
 model LevelConstraint {
-    id                  String @id @default(auto()) @map("_id") @db.ObjectId
+    id                  String @id @default(uuid()) @db.Uuid
     maxDailyWithdrawal  Float
     maxSingleWithdrawal Float
     level               Level?
 }
 
 model LevelConstraintTierOne {
-    id                  String    @id @default(auto()) @map("_id") @db.ObjectId
+    id                  String    @id @default(uuid()) @db.Uuid
     name                LeveLName @default(TIER_1)
     maxDailyWithdrawal  Float     @default(100000)
     maxSingleWithdrawal Float     @default(50000)
 }
 
 model LevelConstraintTierTwo {
-    id                  String    @id @default(auto()) @map("_id") @db.ObjectId
+    id                  String    @id @default(uuid()) @db.Uuid
     name                LeveLName @default(TIER_2)
     maxDailyWithdrawal  Float     @default(1000000)
     maxSingleWithdrawal Float     @default(200000)
 }
 
 model LevelConstraintTierThree {
-    id                  String    @id @default(auto()) @map("_id") @db.ObjectId
+    id                  String    @id @default(uuid()) @db.Uuid
     name                LeveLName @default(TIER_3)
     maxDailyWithdrawal  Float     @default(1000000000)
     maxSingleWithdrawal Float     @default(500000)
 }
 
 model BlacklistedIP {
-    id String @id @default(auto()) @map("_id") @db.ObjectId
+    id String @id @default(uuid()) @db.Uuid
     ip String @unique
 }
 
 model Modmin {
-    id       String     @id @default(auto()) @map("_id") @db.ObjectId
+    id       String     @id @default(uuid()) @db.Uuid
     fullName String
     password String
     email    String     @unique
@@ -179,7 +179,7 @@ enum Roles {
 }
 
 model Cache {
-    id           String   @id @default(auto()) @map("_id") @db.ObjectId
+    id           String   @id @default(uuid()) @db.Uuid
     key          String   @unique
     value        Int?
     expires_in   Int?
@@ -191,15 +191,15 @@ model Cache {
 }
 
 model Totp {
-    id         String    @id @default(auto()) @map("_id") @db.ObjectId
+    id         String    @id @default(uuid()) @db.Uuid
     otp        String?
     otp_expiry DateTime?
     user       User      @relation(fields: [userId], references: [id])
-    userId     String    @unique @db.ObjectId
+    userId     String    @unique @db.Uuid
 }
 
 model Log {
-    id                  String   @id @default(auto()) @map("_id") @db.ObjectId
+    id                  String   @id @default(uuid()) @db.Uuid
     ip                  String
     endpoint            String
     query               String?
@@ -217,13 +217,13 @@ model Log {
     requestedAt         DateTime
     responsedAt         DateTime
     user                User?    @relation(fields: [userId], references: [id])
-    userId              String?  @unique @db.ObjectId
+    userId              String?  @unique @db.Uuid
     modmin              Modmin?  @relation(fields: [modminId], references: [id])
-    modminId            String?  @unique @db.ObjectId
+    modminId            String?  @unique @db.Uuid
 }
 
 model Wallet {
-    id                  String               @id @default(auto()) @map("_id") @db.ObjectId
+    id                  String               @id @default(uuid()) @db.Uuid
     ngnBalance          Float                @default(0.00)
     usdBalance          Float                @default(0.00)
     dummyUsdBalance     Float?               @default(0.00)
@@ -236,11 +236,11 @@ model Wallet {
     createdAt           DateTime             @default(now())
     updatedAt           DateTime             @updatedAt
     user                User                 @relation(fields: [userId], references: [id])
-    userId              String               @unique @db.ObjectId
+    userId              String               @unique @db.Uuid
 }
 
 model LinkedBank {
-    id            String   @id @default(auto()) @map("_id") @db.ObjectId
+    id            String   @id @default(uuid()) @db.Uuid
     bankName      String
     accountName   String
     accountNumber String
@@ -249,11 +249,11 @@ model LinkedBank {
     updatedAt     DateTime @updatedAt
     createdAt     DateTime @default(now())
     user          User     @relation(fields: [userId], references: [id])
-    userId        String   @unique @db.ObjectId
+    userId        String   @unique @db.Uuid
 }
 
 model Recipient {
-    id                 String        @id @default(auto()) @map("_id") @db.ObjectId
+    id                 String        @id @default(uuid()) @db.Uuid
     recipient_type     RecipientType
     createdAt          DateTime
     domain             String?
@@ -269,12 +269,12 @@ model Recipient {
     fullname           String?
     username           String?
     user               User          @relation(fields: [userId], references: [id])
-    userId             String        @unique @db.ObjectId
+    userId             String        @unique @db.Uuid
     updatedAt          DateTime
 }
 
 model Prices {
-    id                String               @id @default(auto()) @map("_id") @db.ObjectId
+    id                String               @id @default(uuid()) @db.Uuid
     assetType         String?
     label             String?
     currentPrice      Float?
@@ -296,7 +296,7 @@ model Prices {
 }
 
 model WalletAddress {
-    id                        String    @id @default(auto()) @map("_id") @db.ObjectId
+    id                        String    @id @default(uuid()) @db.Uuid
     uid                       String    @unique
     guid                      String
     address                   String
@@ -319,11 +319,11 @@ model WalletAddress {
     deploymentParams          Json?
     lastUsedAt                DateTime? @db.Date
     user                      User?     @relation(fields: [userId], references: [id])
-    userId                    String    @unique @db.ObjectId
+    userId                    String    @unique @db.Uuid
 }
 
 model walletAccount {
-    id                          String   @id @default(auto()) @map("_id") @db.ObjectId
+    id                          String   @id @default(uuid()) @db.Uuid
     uid                         String   @unique
     externalId                  String
     fiatCurrency                String
@@ -351,7 +351,7 @@ model walletAccount {
 }
 
 model Asset {
-    id                 String        @id @default(auto()) @map("_id") @db.ObjectId
+    id                 String        @id @default(uuid()) @db.Uuid
     uid                String        @unique
     guid               String
     label              String
@@ -370,11 +370,11 @@ model Asset {
     blocked            String        @default("0.00")
     createdAt          DateTime
     account            walletAccount @relation(fields: [accountId], references: [id])
-    accountId          String        @unique @db.ObjectId
+    accountId          String        @unique @db.Uuid
 }
 
 model TransactionHistory {
-    id                       String               @id @default(auto()) @map("_id") @db.ObjectId
+    id                       String               @id @default(uuid()) @db.Uuid
     ip                       String?
     tx_id                    String?              @unique
     ref                      String               @unique
@@ -425,11 +425,11 @@ model TransactionHistory {
     authorization_code       String?
     updatedAt                DateTime             @updatedAt
     user                     User                 @relation(fields: [userId], references: [id])
-    userId                   String               @unique @db.ObjectId
+    userId                   String               @unique @db.Uuid
 }
 
 model Notification {
-    id          String   @id @default(auto()) @map("_id") @db.ObjectId
+    id          String   @id @default(uuid()) @db.Uuid
     read        Boolean  @default(false)
     title       String
     description String
@@ -437,11 +437,11 @@ model Notification {
     reference   String?
     notifiedAt  DateTime @default(now())
     user        User     @relation(fields: [userId], references: [id])
-    userId      String   @unique @db.ObjectId
+    userId      String   @unique @db.Uuid
 }
 
 model Invoice {
-    id            String              @id @default(auto()) @map("_id") @db.ObjectId
+    id            String              @id @default(uuid()) @db.Uuid
     invoiceNo     String              @unique
     subject       String
     issuer_name   String
@@ -464,19 +464,19 @@ model Invoice {
     assetType     AssetType?
     addressType   String?
     orderNo       String?
-    items         Item[]
+    items         Json[]
     paymentType   TransactionSource
     createdAt     DateTime            @default(now())
     user          User                @relation(fields: [userId], references: [id])
-    userId        String              @unique @db.ObjectId
+    userId        String              @unique @db.Uuid
 }
 
 model Report {
-    id          String  @id @default(auto()) @map("_id") @db.ObjectId
+    id          String  @id @default(uuid()) @db.Uuid
     category    String
     subject     String?
     description String
-    attachments File[]
+    attachments Json[]
 }
 
 enum AssetType {
@@ -557,17 +557,17 @@ enum MeansOfID {
     DriverLicense
 }
 
-type File {
-    idx        String @default(uuid())
-    public_id  String
-    public_url String
-    secure_url String
-}
+// type File {
+//     idx        String @default(uuid())
+//     public_id  String
+//     public_url String
+//     secure_url String
+// }
 
-type Item {
-    idx      String @default(uuid())
-    name     String
-    rate     Float?
-    amount   Float?
-    quantity Float?
-}
+// type Item {
+//     idx      String @default(uuid())
+//     name     String
+//     rate     Float?
+//     amount   Float?
+//     quantity Float?
+// }

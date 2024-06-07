@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { LeveLName, PrismaClient } from '@prisma/client'
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common'
 
 @Injectable()
@@ -121,5 +121,39 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
             hasLinkedAccount: linkedBanksCount > 0,
             hasAssignedAddresses: walletAddressesCount > 0,
         }
+    }
+
+    async upgradeTierLevel(userId: string) {
+        const user = await this.user.findUnique({
+            where: { id: userId },
+            select: { level: true }
+        })
+
+        const currentLevel = user.level.name
+        let newLevelName: LeveLName = 'TIER_2'
+
+        if (currentLevel === 'TIER_2') {
+            newLevelName = 'TIER_3'
+        }
+
+        const newLevel = await this.level.findUnique({
+            where: { name: newLevelName },
+        })
+
+        await this.$transaction([
+            this.notification.create({
+                data: {
+                    title: 'Account Upgrade!',
+                    description: `Your account has now been upgraded to ${newLevelName}`,
+                    user: { connect: { id: userId } },
+                },
+            }),
+            this.user.update({
+                where: { id: userId },
+                data: {
+                    level: { connect: { id: newLevel.id } }
+                }
+            })
+        ])
     }
 }

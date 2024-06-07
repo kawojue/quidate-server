@@ -141,25 +141,11 @@ export class KycService {
                     return this.response.sendError(res, StatusCodes.Unauthorized, "Profiles not matched")
                 }
 
-                const currentLevel = user.level.name
-                let newLevelName: LeveLName = 'TIER_2'
-
-                if (currentLevel === 'TIER_2') {
-                    newLevelName = 'TIER_3'
-                }
-
-                const newLevel = await this.prisma.level.findUnique({
-                    where: { name: newLevelName },
-                })
-
-                await this.prisma.$transaction([
+                await Promise.all([
                     this.prisma.user.update({
                         where: { id: user.id },
                         data: {
                             fullName: titleText(data.full_name),
-                            level: {
-                                connect: { id: newLevel.id },
-                            },
                         },
                     }),
                     this.prisma.kyc.create({
@@ -169,25 +155,17 @@ export class KycService {
                             id_no: id_no, type: 'BASIC',
                             user: { connect: { id: sub } },
                         }
-                    })
+                    }),
+                    this.prisma.upgradeTierLevel(sub)
                 ])
 
                 res.on('finish', async () => {
-                    await this.prisma.$transaction([
-                        this.prisma.recipient.updateMany({
-                            where: { fullname: user.fullName },
-                            data: {
-                                fullname: titleText(data.full_name),
-                            },
-                        }),
-                        this.prisma.notification.create({
-                            data: {
-                                title: 'Account Upgrade!',
-                                description: `Your account has now been upgraded to ${newLevelName}`,
-                                user: { connect: { id: user.id } },
-                            },
-                        }),
-                    ])
+                    await this.prisma.recipient.updateMany({
+                        where: { fullname: user.fullName },
+                        data: {
+                            fullname: titleText(data.full_name),
+                        },
+                    })
                 })
 
                 this.response.sendSuccess(res, StatusCodes.Created, { message: "Successful" })
@@ -197,7 +175,7 @@ export class KycService {
                 return this.response.sendError(res, StatusCodes.BadRequest, "Only the front and bank of the ID is required")
             }
 
-            let proof_of_ids: Attachment[] = []
+            let proof_of_ids = []
 
             try {
                 const promises = files.map(async file => {
@@ -301,8 +279,7 @@ export class KycService {
                 return this.response.sendError(res, StatusCodes.BadRequest, "Only the front and bank of the ID is required")
             }
 
-            let proof_of_ids: Attachment[] = []
-
+            let proof_of_ids = []
             try {
                 const promises = files.map(async file => {
                     const MAX_SIZE = 5 << 20

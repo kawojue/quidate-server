@@ -10,13 +10,13 @@ import { toUpperCase } from 'helpers/transformer'
 import { FundWalletDTO } from './dto/deposit.dto'
 import { genRandomCode } from 'helpers/generator'
 import { getIpAddress } from 'helpers/getIPAddress'
-import {
-  TransactionType, TransactionSource, TransferStatus,
-} from '@prisma/client'
 import { PrismaService } from 'prisma/prisma.service'
 import { ResponseService } from 'lib/response.service'
 import { BitPowrSdkService } from 'lib/bitPowr.service'
 import { EncryptionService } from 'lib/encryption.service'
+import {
+  TransactionType, TransactionSource, TransferStatus, Prisma,
+} from '@prisma/client'
 import { PriceConversionService } from 'lib/price-conversion'
 import { PaystackService } from 'lib/Paystack/paystack.service'
 import { BankDetailsDTO, ValidateBankDTO } from './dto/bank.dto'
@@ -549,12 +549,7 @@ export class WalletService {
         id: string
         fullName: string
         profile: {
-          avatar: {
-            idx: string
-            public_id: string
-            public_url: string
-            secure_url: string
-          }
+          avatar: Prisma.JsonValue
           phoneWithCountryCode: string
         }
       } | null = null

@@ -1,4 +1,4 @@
-import { ObjectId } from 'mongodb'
+import { v4 as uuidv4 } from 'uuid'
 import { Request, Response } from 'express'
 import { Injectable } from '@nestjs/common'
 import { PinDto } from './dto/pin-auth.dto'
@@ -76,7 +76,7 @@ export class AuthService {
         return this.response.sendError(res, StatusCodes.InternalServerError, "Level constraints not found")
       }
 
-      const _id = new ObjectId().toString()
+      const _id = uuidv4()
 
       const [user] = await this.prisma.$transaction([
         this.prisma.user.create({

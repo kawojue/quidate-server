@@ -1,7 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger'
+import { Transform } from 'class-transformer'
+import { toLowerCase } from 'helpers/transformer'
 import { TransactionCurrency } from '@prisma/client'
 import {
-    IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString
+    IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString,
+    Min
 } from 'class-validator'
 
 enum SortBy {
@@ -15,6 +18,7 @@ export class SearchDto {
     })
     @IsString()
     @IsOptional()
+    @Transform(({ value }) => toLowerCase(value))
     search: string
 }
 
@@ -52,7 +56,7 @@ export class FXRateDTO {
         enum: TransactionCurrency
     })
     @IsNotEmpty()
-    @IsEnum(TransactionCurrency)
+    // @IsEnum(TransactionCurrency)
     currencyCode: TransactionCurrency
 
     @ApiProperty({
@@ -66,16 +70,10 @@ export class PurchaseGiftCardDTO {
     @ApiProperty({
         example: 2
     })
+    @Min(1)
     @IsNumber()
     @IsNotEmpty()
     quantity: number
-
-    @ApiProperty({
-        example: '123'
-    })
-    @IsNumber()
-    @IsNotEmpty()
-    productId: number
 
     @ApiProperty({
         example: 12.99
@@ -83,4 +81,10 @@ export class PurchaseGiftCardDTO {
     @IsNumber()
     @IsNotEmpty()
     unitPrice: number
+
+    @ApiProperty({
+        enum: TransactionCurrency
+    })
+    @IsEnum(TransactionCurrency)
+    tx_source: TransactionCurrency
 }

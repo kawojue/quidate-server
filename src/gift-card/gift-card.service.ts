@@ -4,22 +4,40 @@ import {
     InfiniteScrollDto, PurchaseGiftCardDTO,
 } from './dto/gift-card.dto'
 import { Injectable } from '@nestjs/common'
+import { MiscService } from 'lib/misc.service'
 import { StatusCodes } from 'enums/statusCodes'
 import { PlunkService } from 'lib/plunk.service'
 import { genRandomCode } from 'helpers/generator'
+import { toLowerCase } from 'helpers/transformer'
 import { PrismaService } from 'prisma/prisma.service'
 import { ResponseService } from 'lib/response.service'
 import { Consumer } from 'lib/Reloadly/reloadly.service'
+import { TransferStatus } from '@prisma/client'
 
 @Injectable()
 export class GiftCardService {
     private consumer: Consumer
 
     constructor(
+        private readonly misc: MiscService,
         private readonly plunk: PlunkService,
         private readonly prisma: PrismaService,
         private readonly response: ResponseService,
     ) { this.consumer = new Consumer('https://giftcards-sandbox.reloadly.com', this.prisma) }
+
+    private getSenderDenomination(recipientDenomination: number, map: { [key: string]: number }): number | null {
+        const senderDenomination = map[recipientDenomination.toString()]
+        return senderDenomination !== undefined ? senderDenomination : null
+    }
+
+    private getRecipientDenomination(senderDenomination: number, map: { [key: string]: number }): number | null {
+        for (const [key, value] of Object.entries(map)) {
+            if (value === senderDenomination) {
+                return parseFloat(key)
+            }
+        }
+        return null
+    }
 
     async fetchCountries(res: Response) {
         const countries = await this.consumer.sendRequest<GiftCardCountryInfo[]>('GET', 'countries')
@@ -37,21 +55,19 @@ export class GiftCardService {
         try {
             const { content: products } = await this.consumer.sendRequest<GiftCardProducts>('GET', `products?size=${limit}&page=${page}&countryCode=${isoName}`)
 
-            const filteredProducts = search.trim() ? products.filter((product) => {
-                const searchTerm = search.toLowerCase()
+            const filteredProducts = products.filter((product) => {
                 return (
-                    product.productName.toLowerCase().includes(searchTerm) ||
-                    product.country.name.toLowerCase().includes(searchTerm) ||
-                    product.brand.brandName.toLowerCase().includes(searchTerm)
+                    toLowerCase(product.productName).includes(search) ||
+                    toLowerCase(product.country.name).includes(search) ||
+                    toLowerCase(product.brand.brandName).includes(search)
                 )
-            }) : products
+            })
 
             this.response.sendSuccess(res, StatusCodes.OK, {
                 data: { products: filteredProducts, total: filteredProducts.length }
             })
-        } catch (error) {
-            console.error('Error fetching products:', error)
-            this.response.sendError(res, StatusCodes.InternalServerError, 'Failed to fetch products')
+        } catch (err) {
+            this.misc.handleServerError(res, err, 'Failed to fetch products')
         }
     }
 
@@ -68,15 +84,11 @@ export class GiftCardService {
     async fetchBrands(res: Response, { search = '' }: SearchDto) {
         let brands = await this.consumer.sendRequest<Brand[]>('GET', 'brands')
 
-        if (search.trim()) {
-            brands = brands.filter(brand => {
-                if (search
-                    .toLowerCase()
-                    .includes(brand.name.toLowerCase())) {
-                    return brand
-                }
-            })
-        }
+        brands = brands.filter(brand => {
+            if (toLowerCase(brand.name).includes(search)) {
+                return brand
+            }
+        })
 
         this.response.sendSuccess(res, StatusCodes.OK, { data: brands })
     }
@@ -87,22 +99,16 @@ export class GiftCardService {
     ) {
         let { content: discountProducts } = await this.consumer.sendRequest<GiftCardDiscountProducts>('GET', `discounts?size=${limit}&page=${page}`)
 
-        if (search.trim()) {
-            discountProducts = discountProducts.filter(discount => {
-                if (
-                    search
-                        .toLowerCase()
-                        .includes(discount.product.productName.toLowerCase()) ||
-                    search
-                        .toLowerCase()
-                        .includes(discount.product.countryCode.toLowerCase())
-                ) {
-                    return discount
-                }
-            })
-        }
+        const products = discountProducts.filter(discount => {
+            if (
+                toLowerCase(discount.product.productName).includes(search) ||
+                toLowerCase(discount.product.countryCode).includes(search)
+            ) {
+                return discount
+            }
+        })
 
-        this.response.sendSuccess(res, StatusCodes.OK, { data: discountProducts })
+        this.response.sendSuccess(res, StatusCodes.OK, { data: products })
     }
 
     async fetchDiscountProduct(res: Response, produtctId: string) {
@@ -120,8 +126,9 @@ export class GiftCardService {
     async purchaseGiftCard(
         res: Response,
         { sub }: ExpressUser,
+        productId: string,
         {
-            quantity, productId, unitPrice
+            quantity, unitPrice, tx_source
         }: PurchaseGiftCardDTO
     ) {
         try {
@@ -131,39 +138,98 @@ export class GiftCardService {
                 return this.response.sendError(res, StatusCodes.NotFound, "Product not found")
             }
 
+            let senderPrice: number | null = null
+
             if (product.denominationType === "FIXED") {
                 if (!product.fixedRecipientDenominations.includes(unitPrice)) {
-                    return this.response.sendError(res, StatusCodes.BadRequest, "Invalid unit price")
+                    return this.response.sendError(res, StatusCodes.BadRequest, "Unit price is not listed")
                 }
+
+                senderPrice = this.getRecipientDenomination(unitPrice, product.fixedRecipientToSenderDenominationsMap)
+                console.log({ senderPrice })
             }
 
             if (product.denominationType === "RANGE") {
                 if (unitPrice > product.maxRecipientDenomination || unitPrice < product.minRecipientDenomination) {
-                    return this.response.sendError(res, StatusCodes.BadRequest, "Invalid unit price")
+                    return this.response.sendError(res, StatusCodes.BadRequest, "Unit price is out of range")
+                }
+
+                const rate = await this.consumer.sendRequest<FxRate>('GET', `fx-rate?currencyCode=${product.recipientCurrencyCode}&amount=${unitPrice}`)
+
+                senderPrice = rate.senderAmount
+            }
+
+            let discountAmount = 0
+            if (product.discountPercentage) {
+                discountAmount = senderPrice * (product.discountPercentage / 100)
+            }
+            const discountedPrice = senderPrice - discountAmount
+            console.log({ discountedPrice })
+            const senderCostNGN = discountedPrice + product.senderFee
+            console.log({ senderCostNGN })
+            const totalSenderCostNGN = senderCostNGN * quantity
+            console.log({ totalSenderCostNGN })
+
+            const rate = await this.consumer.sendRequest<FxRate>('GET', `fx-rate?currencyCode=USD&amount=${1}`)
+
+            const senderCostUSD = senderCostNGN / rate.recipientAmount
+            const totalSenderCostUSD = totalSenderCostNGN / rate.recipientAmount
+
+            const user = await this.prisma.user.findUnique({
+                where: { id: sub },
+                include: { wallet: true }
+            })
+
+            if (tx_source === "NGN") {
+                if (user.wallet.ngnBalance < totalSenderCostNGN) {
+                    return this.response.sendError(res, StatusCodes.UnprocessableEntity, "Insufficient balance")
                 }
             }
 
-            const user = await this.prisma.user.findUnique({
-                where: { id: sub }
-            })
+            if (tx_source === "USD") {
+                if (user.wallet.usdBalance < totalSenderCostUSD) {
+                    return this.response.sendError(res, StatusCodes.UnprocessableEntity, "Insufficient balance")
+                }
+            }
 
             const payload = {
                 senderName: user.fullName,
                 recipientEmail: user.email,
                 unitPrice, productId, quantity,
-                customIdentifier: `${genRandomCode()}`
+                customIdentifier: `giftcard-${genRandomCode()}`
             }
 
             const order = await this.consumer.sendRequest<GiftCardTransaction>('POST', 'orders', payload)
 
-            // const tx = await this.prisma.transactionHistory.create({
-            //     data: {
+            console.log(order)
 
-            //         user: {connect: {id: sub}}
-            //     }
-            // })
+            await this.prisma.manageBalance(sub, tx_source === "NGN" ? 'ngnBalance' : 'usdBalance', tx_source === "NGN" ? totalSenderCostNGN : totalSenderCostUSD, 'decrement')
+
+            const tx = await this.prisma.transactionHistory.create({
+                data: {
+                    source: 'fiat',
+                    currency: tx_source,
+                    totalFee: order.fee,
+                    type: 'DISBURSEMENT',
+                    txId: order.transactionId,
+                    ref: order.customIdentifier,
+                    discount: discountedPrice,
+                    user: { connect: { id: sub } },
+                    quantity: order.product.quantity,
+                    unitPrice: order.product.unitPrice,
+                    productId: order.product.productId,
+                    recipientEmail: order.recipientEmail,
+                    status: order.status as TransferStatus,
+                    amount: tx_source === "NGN" ? senderCostNGN : senderCostUSD,
+                    settlementAmount: tx_source === "NGN" ? totalSenderCostNGN : totalSenderCostUSD,
+                }
+            })
+
+            console.log(tx)
+
+            this.response.sendSuccess(res, StatusCodes.OK, { data: tx })
         } catch (err) {
-
+            this.misc.handleServerError(res, err)
         }
     }
 

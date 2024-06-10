@@ -459,26 +459,36 @@ export class WalletService {
         this.prisma.manageBalance(receiver.id, tx_source === "NGN" ? 'ngnBalance' : 'usdBalance', amount, 'increment')
       ])
 
-      await this.prisma.$transaction([
-        this.prisma.recipient.upsert({
-          where: { userId, username: receiver.username },
-          create: {
+      const recipient = await this.prisma.recipient.findFirst({
+        where: { userId, username: receiver.username }
+      })
+
+      if (recipient) {
+        await this.prisma.recipient.update({
+          where: { id: recipient.id },
+          data: {
+            updatedAt: new Date()
+          }
+        })
+      } else {
+        await this.prisma.recipient.create({
+          data: {
             updatedAt: new Date(),
             createdAt: currentDate,
             recipient_type: 'in_app',
             fullname: receiver.fullName,
             username: receiver.username,
             user: { connect: { id: user.id } }
-          },
-          update: { updatedAt: new Date() }
-        }),
-        this.prisma.transactionHistory.create({
-          data: {
-            ...senderHistory,
-            user: { connect: { id: user.id } }
           }
-        }),
-      ])
+        })
+      }
+
+      await this.prisma.transactionHistory.create({
+        data: {
+          ...senderHistory,
+          user: { connect: { id: user.id } }
+        }
+      })
 
       res.on('finish', async () => {
         await this.prisma.$transaction([

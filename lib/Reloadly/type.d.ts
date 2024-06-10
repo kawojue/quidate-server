@@ -32,7 +32,7 @@ interface GiftCardProduct {
     maxSenderDenomination: number | null
     fixedRecipientDenominations: number[]
     fixedSenderDenominations: number[]
-    fixedRecipientToSenderDenominationsMap: { [key: string]: number }[]
+    fixedRecipientToSenderDenominationsMap: { [key: string]: number }
     logoUrls: string[]
     brand: {
         brandId: number
@@ -99,6 +99,13 @@ interface Brand {
     id: number
     name: string
     status: 'ACTIVE'
+}
+
+interface FxRate {
+    senderCurrency: string
+    senderAmount: number
+    recipientCurrency: string
+    recipientAmount: number
 }
 
 interface Reloadly {

@@ -97,7 +97,7 @@ export class InvoiceService {
 
             if (paymentType === 'fiat') {
                 if (!bankName || !accountName || !accountNumber) {
-                    const vtu = await this.prisma.linkedBank.findUnique({
+                    const vtu = await this.prisma.linkedBank.findFirst({
                         where: { primary: true, userId: sub }
                     })
 

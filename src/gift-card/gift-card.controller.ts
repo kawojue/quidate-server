@@ -1,3 +1,4 @@
+import { Response } from 'express'
 import {
   Body, Controller, Get, Param,
   Post, Query, Req, Res, UseGuards,
@@ -7,12 +8,11 @@ import {
   InfiniteScrollDto, PurchaseGiftCardDTO,
   FetchProductsDto, FXRateDTO, SearchDto,
 } from './dto/gift-card.dto'
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
-import { Response, Request } from 'express'
 import { AuthGuard } from '@nestjs/passport'
 import { Roles as Role } from 'src/role.decorator'
 import { RolesGuard } from 'src/jwt/jwt-auth.guard'
 import { GiftCardService } from './gift-card.service'
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
 
 @ApiTags("Gift Card")
 @Controller('gift-card')
@@ -71,13 +71,14 @@ export class GiftCardController {
 
   @ApiBearerAuth()
   @Role(Roles.user)
-  @Post('/purchase')
+  @Post('/purchase/:productId')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   async purchaseGiftCard(
     @Req() req: IRequest,
     @Res() res: Response,
     @Body() body: PurchaseGiftCardDTO,
+    @Param('productId') productId: string,
   ) {
-    await this.giftCardService.purchaseGiftCard(res, req.user, body)
+    await this.giftCardService.purchaseGiftCard(res, req.user, productId, body)
   }
 }

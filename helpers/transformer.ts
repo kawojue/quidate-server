@@ -9,25 +9,17 @@ export const toLowerCase = (text: string) => text.toLowerCase().trim()
 
 export const toUpperCase = (text: string) => text.toUpperCase().trim()
 
-export const maskedBvn = (bvn: string) => {
-    return bvn.length === 11 ? bvn.slice(0, 3) + '*****' + bvn.slice(-3) : bvn
-}
 
-export const formatSize = (size: number) => {
-    let format = ''
+const units = ['B', 'KB', 'MB', 'GB', 'TB']
 
-    const KB = 1_024 as const
-    const MB = 1_048_576 as const
+export const formatSize = (size: number, unitIndex: number = 0): string => {
+    const KB = 1024
 
-    if (size >= MB) {
-        format = `${(size / MB).toFixed(2)}MB`
-    } else if (size >= KB) {
-        format = `${(size / KB).toFixed(2)}KB`
-    } else {
-        format = `${size} B`
+    if (size < KB || unitIndex >= units.length - 1) {
+        return `${size.toFixed(2)} ${units[unitIndex]}`
     }
 
-    return format
+    return formatSize(size / KB, unitIndex + 1)
 }
 
 export const normalizePhoneNumber = (phoneNumber: string) => {
@@ -44,4 +36,20 @@ export const normalizePhoneNumber = (phoneNumber: string) => {
     }
 
     return normalized
+}
+
+export const removeNullFields = (obj: any): any => {
+    if (Array.isArray(obj)) {
+        return obj.map(removeNullFields)
+    } else if (obj !== null && typeof obj === 'object' && !(obj instanceof Date)) {
+        return Object.keys(obj).reduce((acc, key) => {
+            const value = obj[key]
+            if (value !== null) {
+                acc[key] = removeNullFields(value)
+            }
+            return acc
+        }, {} as { [key: string]: any })
+    } else {
+        return obj
+    }
 }

@@ -5,14 +5,14 @@ import {
 } from './dto/gift-card.dto'
 import { Injectable } from '@nestjs/common'
 import { MiscService } from 'lib/misc.service'
+import { TransferStatus } from '@prisma/client'
 import { StatusCodes } from 'enums/statusCodes'
 import { PlunkService } from 'lib/plunk.service'
 import { genRandomCode } from 'helpers/generator'
-import { toLowerCase } from 'helpers/transformer'
 import { PrismaService } from 'prisma/prisma.service'
 import { ResponseService } from 'lib/response.service'
 import { Consumer } from 'lib/Reloadly/reloadly.service'
-import { TransferStatus } from '@prisma/client'
+import { removeNullFields, toLowerCase } from 'helpers/transformer'
 
 @Injectable()
 export class GiftCardService {
@@ -24,20 +24,6 @@ export class GiftCardService {
         private readonly prisma: PrismaService,
         private readonly response: ResponseService,
     ) { this.consumer = new Consumer('https://giftcards-sandbox.reloadly.com', this.prisma) }
-
-    private getSenderDenomination(recipientDenomination: number, map: { [key: string]: number }): number | null {
-        const senderDenomination = map[recipientDenomination.toString()]
-        return senderDenomination !== undefined ? senderDenomination : null
-    }
-
-    private getRecipientDenomination(senderDenomination: number, map: { [key: string]: number }): number | null {
-        for (const [key, value] of Object.entries(map)) {
-            if (value === senderDenomination) {
-                return parseFloat(key)
-            }
-        }
-        return null
-    }
 
     async fetchCountries(res: Response) {
         const countries = await this.consumer.sendRequest<GiftCardCountryInfo[]>('GET', 'countries')
@@ -145,8 +131,9 @@ export class GiftCardService {
                     return this.response.sendError(res, StatusCodes.BadRequest, "Unit price is not listed")
                 }
 
-                senderPrice = this.getRecipientDenomination(unitPrice, product.fixedRecipientToSenderDenominationsMap)
-                console.log({ senderPrice })
+                const rate = await this.consumer.sendRequest<FxRate>('GET', `fx-rate?currencyCode=${product.recipientCurrencyCode}&amount=${unitPrice}`)
+
+                senderPrice = rate.senderAmount
             }
 
             if (product.denominationType === "RANGE") {
@@ -164,16 +151,13 @@ export class GiftCardService {
                 discountAmount = senderPrice * (product.discountPercentage / 100)
             }
             const discountedPrice = senderPrice - discountAmount
-            console.log({ discountedPrice })
             const senderCostNGN = discountedPrice + product.senderFee
-            console.log({ senderCostNGN })
             const totalSenderCostNGN = senderCostNGN * quantity
-            console.log({ totalSenderCostNGN })
 
             const rate = await this.consumer.sendRequest<FxRate>('GET', `fx-rate?currencyCode=USD&amount=${1}`)
 
-            const senderCostUSD = senderCostNGN / rate.recipientAmount
-            const totalSenderCostUSD = totalSenderCostNGN / rate.recipientAmount
+            const senderCostUSD = senderCostNGN / rate.senderAmount
+            const totalSenderCostUSD = totalSenderCostNGN / rate.senderAmount
 
             const user = await this.prisma.user.findUnique({
                 where: { id: sub },
@@ -201,8 +185,6 @@ export class GiftCardService {
 
             const order = await this.consumer.sendRequest<GiftCardTransaction>('POST', 'orders', payload)
 
-            console.log(order)
-
             await this.prisma.manageBalance(sub, tx_source === "NGN" ? 'ngnBalance' : 'usdBalance', tx_source === "NGN" ? totalSenderCostNGN : totalSenderCostUSD, 'decrement')
 
             const tx = await this.prisma.transactionHistory.create({
@@ -213,21 +195,20 @@ export class GiftCardService {
                     type: 'DISBURSEMENT',
                     txId: order.transactionId,
                     ref: order.customIdentifier,
-                    discount: discountedPrice,
                     user: { connect: { id: sub } },
                     quantity: order.product.quantity,
                     unitPrice: order.product.unitPrice,
                     productId: order.product.productId,
+                    discount: discountAmount * quantity,
                     recipientEmail: order.recipientEmail,
+                    productName: order.product.productName,
                     status: order.status as TransferStatus,
                     amount: tx_source === "NGN" ? senderCostNGN : senderCostUSD,
                     settlementAmount: tx_source === "NGN" ? totalSenderCostNGN : totalSenderCostUSD,
                 }
             })
 
-            console.log(tx)
-
-            this.response.sendSuccess(res, StatusCodes.OK, { data: tx })
+            this.response.sendSuccess(res, StatusCodes.OK, { data: removeNullFields(tx) })
         } catch (err) {
             this.misc.handleServerError(res, err)
         }

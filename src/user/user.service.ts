@@ -6,6 +6,7 @@ import { StatusCodes } from 'enums/statusCodes'
 import { RecipientDto } from './dto/recipient.dto'
 import { PrismaService } from 'prisma/prisma.service'
 import { ResponseService } from 'lib/response.service'
+import { removeNullFields } from 'helpers/transformer'
 import { TxAggregateDTO, TxHistoriesDto, TxHistoryDto } from './dto/history.dto'
 
 @Injectable()
@@ -160,13 +161,13 @@ export class UserService {
 
       this.response.sendSuccess(res, StatusCodes.OK, {
         data: {
-          txHistories,
+          txHistories: removeNullFields(txHistories),
           metadata: {
+            hasNext,
+            hasPrev,
             totalItems,
             totalPages,
             currentPage: page,
-            hasNext,
-            hasPrev,
             fetchedLength: txHistories.length,
           }
         },
@@ -265,7 +266,7 @@ export class UserService {
         return
       }
 
-      this.response.sendSuccess(res, StatusCodes.OK, { data: txHistory })
+      this.response.sendSuccess(res, StatusCodes.OK, { data: removeNullFields(txHistory) })
     } catch (err) {
       console.error(err)
       this.response.sendError(res, StatusCodes.InternalServerError, "Error fetching Transaction History")

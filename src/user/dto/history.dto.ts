@@ -1,6 +1,7 @@
 import { RcptDto } from './recipient.dto'
-import { IsEnum, IsOptional } from 'class-validator'
 import { ApiProperty } from '@nestjs/swagger'
+import { Transform } from 'class-transformer'
+import { IsEnum, IsOptional } from 'class-validator'
 import { TransactionSource, TransactionType, TransferStatus } from '@prisma/client'
 
 export class TxHistoriesDto extends RcptDto {
@@ -92,11 +93,13 @@ export class TxHistoryDto {
         example: '17095485144143simb259ltct1nxq',
         description: 'You could use reference to generally get any individual transaction.'
     })
+    @Transform(({ value }) => value.trim())
     ref?: string
 
     @ApiProperty({
         example: '0xa-1403619452-53a9887c',
         description: 'You could use Idempotency Key to get any individual crypto transaction.'
     })
+    @Transform(({ value }) => value.trim())
     idempotencyKey?: string
 }

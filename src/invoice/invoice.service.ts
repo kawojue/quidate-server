@@ -9,6 +9,7 @@ import { ResponseService } from 'lib/response.service'
 import { BitPowrSdkService } from 'lib/bitPowr.service'
 import { PriceConversionService } from 'lib/price-conversion'
 import { AssetType, TransactionHistory } from '@prisma/client'
+import { InfiniteScrollDto } from 'src/gift-card/dto/gift-card.dto'
 
 @Injectable()
 export class InvoiceService {
@@ -291,9 +292,25 @@ export class InvoiceService {
         })
     }
 
-    async fetchInvoices(res: Response, { sub }: ExpressUser) {
+    async fetchInvoices(
+        res: Response,
+        { sub }: ExpressUser,
+        { limit = 20, page = 1, search = '' }: InfiniteScrollDto
+    ) {
+        page = Number(page)
+        limit = Number(limit)
+        const offset = (page - 1) * limit
+
+        const OR = [
+            { orderNo: { contains: search, mode: 'insensitive' } },
+            { invoiceNo: { contains: search, mode: 'insensitive' } },
+            { clientInfo: { contains: search, mode: 'insensitive' } },
+            { description: { contains: search, mode: 'insensitive' } },
+        ]
+
         const invoices = await this.prisma.invoice.findMany({
-            where: { userId: sub },
+            // @ts-ignore
+            where: { userId: sub, OR },
             orderBy: { createdAt: 'desc' },
             select: {
                 id: true,
@@ -305,10 +322,33 @@ export class InvoiceService {
                 clientInfo: true,
                 paymentType: true,
                 totalAmount: true,
-            }
+            },
+            take: limit,
+            skip: offset,
         })
 
-        this.response.sendSuccess(res, StatusCodes.OK, { data: invoices })
+        const totalCount = await this.prisma.invoice.count({
+            // @ts-ignore
+            where: { userId: sub, OR },
+        })
+
+        const totalPages = Math.ceil(totalCount / limit)
+
+        const hasNext = page < totalPages
+        const hasPrev = page > 1
+        const currentPage = page
+        const total = totalCount
+
+        this.response.sendSuccess(res, StatusCodes.OK, {
+            data: invoices,
+            metadata: {
+                hasNext,
+                hasPrev,
+                total,
+                totalPages,
+                currentPage,
+            }
+        })
     }
 
     async removeInvoice(

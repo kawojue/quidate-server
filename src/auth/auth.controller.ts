@@ -72,10 +72,10 @@ export class AuthController {
     await this.authService.resetPassword(res, req, resetPasswordDto)
   }
 
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('user')
+  @ApiBearerAuth()
   @Post("/password/edit")
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   async updatePassword(
     @Res() res: Response,
     @Req() req: IRequest,

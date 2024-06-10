@@ -35,6 +35,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
             where: { id: userId },
             select: {
                 lastLoggedInAt: true,
+                lastUsedCredAt: true,
                 lastPasswordChanged: true,
                 lastUsedBiometricAt: true,
             }
@@ -45,22 +46,33 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         }
 
         const profile = await this.getProfile(userId)
-        const { lastLoggedInAt, lastPasswordChanged, lastUsedBiometricAt } = user
+        const { lastUsedCredAt, lastPasswordChanged, lastUsedBiometricAt } = user
+
+        if (!lastUsedBiometricAt) {
+            return { isAbleToUseBiometric: true }
+        }
 
         if (type === 'Login') {
-            if (!lastUsedBiometricAt || lastLoggedInAt > lastUsedBiometricAt || lastPasswordChanged > lastUsedBiometricAt) {
+            if (lastPasswordChanged > lastUsedBiometricAt && lastUsedCredAt <= lastUsedBiometricAt) {
                 return {
                     isAbleToUseBiometric: false,
-                    reason: 'Password required due to recent login or password change.'
+                    reason: 'Password required due to recent password change.'
                 }
             }
-        } else if (type === 'Tx') {
+
+            if (lastUsedCredAt > lastUsedBiometricAt) {
+                return { isAbleToUseBiometric: true }
+            }
+        }
+
+        else if (type === 'Tx') {
             if (!profile) {
                 throw new Error('Profile not found')
             }
+
             const { lastPinChanged } = profile
 
-            if (!lastUsedBiometricAt || lastPinChanged > lastUsedBiometricAt) {
+            if (lastPinChanged > lastUsedBiometricAt) {
                 return {
                     isAbleToUseBiometric: false,
                     reason: 'PIN required due to recent PIN change.'

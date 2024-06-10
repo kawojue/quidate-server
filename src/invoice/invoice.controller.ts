@@ -7,8 +7,10 @@ import { RolesGuard } from 'src/jwt/jwt-auth.guard'
 import { CreateInvoiceDto } from './dto/create.dto'
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
 import {
-  Controller, Post, Get, UseGuards, Delete, Req, Res, Body, Param
+  Controller, Post, Get, UseGuards, Delete, Req, Res, Body, Param,
+  Query
 } from '@nestjs/common'
+import { InfiniteScrollDto } from 'src/gift-card/dto/gift-card.dto'
 
 @ApiTags('Invoice')
 @Controller('invoice')
@@ -31,8 +33,12 @@ export class InvoiceController {
   @Get('/fetch')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(Role.user)
-  async fetchInvoices(@Req() req: IRequest, @Res() res: Response) {
-    await this.invoiceService.fetchInvoices(res, req.user)
+  async fetchInvoices(
+    @Req() req: IRequest,
+    @Res() res: Response,
+    @Query() q: InfiniteScrollDto
+  ) {
+    await this.invoiceService.fetchInvoices(res, req.user, q)
   }
 
   @Get('/:invoiceNo')

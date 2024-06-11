@@ -45,6 +45,7 @@ export class GiftCardService {
                 return (
                     toLowerCase(product.productName).includes(search) ||
                     toLowerCase(product.country.name).includes(search) ||
+                    toLowerCase(product.category.name).includes(search) ||
                     toLowerCase(product.brand.brandName).includes(search)
                 )
             })
@@ -114,7 +115,8 @@ export class GiftCardService {
         { sub }: ExpressUser,
         productId: string,
         {
-            quantity, unitPrice, tx_source
+            quantity, unitPrice,
+            tx_source, recipientEmail
         }: PurchaseGiftCardDTO
     ) {
         try {
@@ -164,6 +166,8 @@ export class GiftCardService {
                 include: { wallet: true }
             })
 
+            recipientEmail = recipientEmail || user.email
+
             if (tx_source === "NGN") {
                 if (user.wallet.ngnBalance < totalSenderCostNGN) {
                     return this.response.sendError(res, StatusCodes.UnprocessableEntity, "Insufficient balance")
@@ -177,8 +181,8 @@ export class GiftCardService {
             }
 
             const payload = {
+                recipientEmail,
                 senderName: user.fullName,
-                recipientEmail: user.email,
                 unitPrice, productId, quantity,
                 customIdentifier: `giftcard-${genRandomCode()}`
             }

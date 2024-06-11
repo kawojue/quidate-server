@@ -38,6 +38,10 @@ interface GiftCardProduct {
         brandId: number
         brandName: string
     }
+    category: {
+        id: number
+        name: string
+    }
     country: {
         isoName: string
         name: string

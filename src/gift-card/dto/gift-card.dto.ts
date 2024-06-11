@@ -1,10 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger'
 import { Transform } from 'class-transformer'
 import { TransactionCurrency } from '@prisma/client'
-import {
-    IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Min
-} from 'class-validator'
 import { toLowerCase, toUpperCase } from 'helpers/transformer'
+import {
+    IsEmail, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Min
+} from 'class-validator'
 
 enum SortBy {
     name = "name",
@@ -86,4 +86,12 @@ export class PurchaseGiftCardDTO {
     })
     @IsEnum(TransactionCurrency)
     tx_source: TransactionCurrency
+
+    @ApiProperty({
+        example: 'alwaysappear@gmail.com'
+    })
+    @IsEmail()
+    @IsOptional()
+    @Transform(({ value }) => toLowerCase(value))
+    recipientEmail: string
 }

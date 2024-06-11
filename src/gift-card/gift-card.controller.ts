@@ -82,7 +82,10 @@ export class GiftCardController {
     await this.giftCardService.purchaseGiftCard(res, req.user, productId, body)
   }
 
+  @ApiBearerAuth()
   @Get('/redeems')
+  @Role(Roles.user)
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   async redeemCode(
     @Req() req: IRequest,
     @Res() res: Response,

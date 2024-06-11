@@ -179,15 +179,16 @@ enum Roles {
 }
 
 model Cache {
-    id           String   @id @default(uuid()) @db.Uuid
-    key          String   @unique
+    id           String    @id @default(uuid()) @db.Uuid
+    key          String    @unique
     value        Int?
     expires_in   Int?
     scope        String?
     token_type   String?
     access_token String?
-    createdAt    DateTime @default(now())
-    updatedAt    DateTime @updatedAt
+    type         CacheType
+    createdAt    DateTime  @default(now())
+    updatedAt    DateTime  @updatedAt
 }
 
 model Totp {
@@ -322,7 +323,7 @@ model WalletAddress {
     userId                    String    @db.Uuid
 }
 
-model walletAccount {
+model WalletAccount {
     id                          String   @id @default(uuid()) @db.Uuid
     uid                         String   @unique
     externalId                  String
@@ -369,7 +370,7 @@ model Asset {
     pending            String        @default("0.00")
     blocked            String        @default("0.00")
     createdAt          DateTime
-    account            walletAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+    account            WalletAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
     accountId          String        @db.Uuid
 }
 
@@ -495,6 +496,11 @@ enum AssetType {
 enum UserStatus {
     suspended
     active
+}
+
+enum CacheType {
+    PIN
+    RELOADLY
 }
 
 enum TransactionCurrency {

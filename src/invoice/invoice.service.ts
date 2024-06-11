@@ -288,6 +288,7 @@ export class InvoiceService {
                     subject: 'Invoice Clicked',
                     body: `Hello, ${invoice.issuer_name}. Your invoice was opened. ${process.env.CLIENT_URL}/invoice/${invoice.invoiceNo.toLowerCase()}`
                 })
+                // TODO: Email template
             }
         })
     }
@@ -342,9 +343,9 @@ export class InvoiceService {
         this.response.sendSuccess(res, StatusCodes.OK, {
             data: invoices,
             metadata: {
+                total,
                 hasNext,
                 hasPrev,
-                total,
                 totalPages,
                 currentPage,
             }

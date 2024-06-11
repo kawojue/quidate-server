@@ -17,7 +17,9 @@ export class Consumer {
     }
 
     private async getAccessToken() {
-        const cache = await this.prisma.cache.findFirst()
+        const cache = await this.prisma.cache.findFirst({
+            where: { type: 'RELOADLY' }
+        })
 
         if (!cache) return null
 
@@ -44,7 +46,7 @@ export class Consumer {
                         client_id: process.env.RELOADLY_CLIENT_ID,
                         client_secret: process.env.RELOADLY_CLIENT_SECRET,
                         grant_type: 'client_credentials',
-                        audience: 'https://giftcards-sandbox.reloadly.com'
+                        audience: 'https://giftcards-sandbox.reloadly.com' // Duh!
                     }
                 )
 
@@ -59,6 +61,7 @@ export class Consumer {
                         token_type,
                         expires_in,
                         access_token,
+                        type: 'RELOADLY',
                         key: process.env.RELOADLY_CLIENT_ID,
                     },
                     update: {

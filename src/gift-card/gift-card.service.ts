@@ -209,6 +209,10 @@ export class GiftCardService {
             })
 
             this.response.sendSuccess(res, StatusCodes.OK, { data: removeNullFields(tx) })
+
+            res.on('finish', async () => {
+                // TODO: Email template
+            })
         } catch (err) {
             this.misc.handleServerError(res, err)
         }

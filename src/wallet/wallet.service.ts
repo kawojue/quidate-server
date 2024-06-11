@@ -151,7 +151,12 @@ export class WalletService {
         if (!isMatch) {
           const cache = await this.prisma.cache.upsert({
             where: { key: pinTrialsKey },
-            create: { key: pinTrialsKey, value: 1, createdAt: new Date(currentTime) },
+            create: {
+              value: 1,
+              type: 'PIN',
+              key: pinTrialsKey,
+              createdAt: new Date(currentTime),
+            },
             update: { value: { increment: 1 }, createdAt: new Date(currentTime) },
           })
 
@@ -391,8 +396,9 @@ export class WalletService {
               key: pinTrialsKey
             },
             create: {
-              key: pinTrialsKey,
               value: 1,
+              type: 'PIN',
+              key: pinTrialsKey,
               createdAt: new Date(currentTime),
             },
             update: {

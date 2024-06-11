@@ -105,6 +105,8 @@ export class AuthService {
         if (user) {
           const otp = generateOTP()
 
+          // TODO: Email template
+
           await Promise.all([
             process.env.NODE_ENV === 'production' ? this.plunk.sendPlunkEmail({
               to: email,
@@ -415,6 +417,8 @@ export class AuthService {
             subject: "Verify it is you!",
             body: `Otp: ${otp.totp}`
           })
+
+          // TODO: Email template
         }
       })
 

@@ -1,11 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger'
 import { Transform } from 'class-transformer'
-import { toLowerCase } from 'helpers/transformer'
 import { TransactionCurrency } from '@prisma/client'
 import {
-    IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString,
-    Min
+    IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Min
 } from 'class-validator'
+import { toLowerCase, toUpperCase } from 'helpers/transformer'
 
 enum SortBy {
     name = "name",
@@ -48,6 +47,7 @@ export class FetchDTO extends InfiniteScrollDto {
 export class FetchProductsDto extends InfiniteScrollDto {
     @IsString()
     @IsOptional()
+    @Transform(({ value }) => toUpperCase(value))
     isoName: string
 }
 
@@ -56,7 +56,6 @@ export class FXRateDTO {
         enum: TransactionCurrency
     })
     @IsNotEmpty()
-    // @IsEnum(TransactionCurrency)
     currencyCode: TransactionCurrency
 
     @ApiProperty({

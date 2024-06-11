@@ -217,6 +217,4 @@ export class GiftCardService {
             this.misc.handleServerError(res, err)
         }
     }
-
-    async redeemCode() { }
 }

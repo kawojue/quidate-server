@@ -108,7 +108,7 @@ interface FxRate {
     recipientAmount: number
 }
 
-interface Reloadly {
+interface ReloadlyResponse {
     scope: string
     expires_in: number
     token_type: string

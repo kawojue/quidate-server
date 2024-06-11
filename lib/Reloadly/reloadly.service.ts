@@ -1,5 +1,5 @@
 import { PrismaService } from 'prisma/prisma.service'
-import axios, { AxiosInstance, AxiosResponse } from 'axios'
+import axios, { AxiosInstance, AxiosResponse, Method } from 'axios'
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common'
 
 @Injectable()
@@ -17,60 +17,58 @@ export class Consumer {
     }
 
     private async getAccessToken() {
-        const cache = await this.prisma.cache.findFirst({
+        return await this.prisma.cache.findFirst({
             where: { type: 'RELOADLY' }
         })
-
-        if (!cache) return null
-
-        return cache
     }
 
     private setAuthorizationHeader(access_token: string) {
         this.axiosInstance.defaults.headers['Authorization'] = `Bearer ${access_token}`
     }
 
+    private async refreshAccessToken() {
+        const response: AxiosResponse<ReloadlyResponse> = await axios.post(
+            'https://auth.reloadly.com/oauth/token',
+            {
+                client_id: process.env.RELOADLY_CLIENT_ID,
+                client_secret: process.env.RELOADLY_CLIENT_SECRET,
+                grant_type: 'client_credentials',
+                audience: 'https://giftcards-sandbox.reloadly.com'
+            }
+        )
+
+        const { expires_in, access_token: newAccessToken, token_type, scope } = response.data
+
+        await this.prisma.cache.upsert({
+            where: { key: process.env.RELOADLY_CLIENT_ID },
+            create: {
+                scope,
+                token_type,
+                expires_in,
+                type: 'RELOADLY',
+                access_token: newAccessToken,
+                key: process.env.RELOADLY_CLIENT_ID,
+            },
+            update: {
+                scope,
+                token_type,
+                expires_in,
+                access_token: newAccessToken,
+            }
+        })
+
+        return newAccessToken
+    }
+
     async sendRequest<T>(method: Method, url: string, data?: any): Promise<T> {
         try {
-            const token = await this.getAccessToken()
-
+            let token = await this.getAccessToken()
             let access_token = token?.access_token
 
-            if (
-                !access_token ||
-                (token?.expires_in && Date.now() > (new Date(token.updatedAt).getTime() + token.expires_in * 1000))
-            ) {
-                const response: AxiosResponse<Reloadly> = await axios.post(
-                    'https://auth.reloadly.com/oauth/token',
-                    {
-                        client_id: process.env.RELOADLY_CLIENT_ID,
-                        client_secret: process.env.RELOADLY_CLIENT_SECRET,
-                        grant_type: 'client_credentials',
-                        audience: 'https://giftcards-sandbox.reloadly.com' // Duh!
-                    }
-                )
+            const tokenExpired = !access_token || (token?.expires_in && Date.now() > (new Date(token.updatedAt).getTime() + token.expires_in * 1000))
 
-                const { expires_in, access_token: accessToken, token_type, scope } = response.data
-
-                access_token = accessToken
-
-                await this.prisma.cache.upsert({
-                    where: { key: process.env.RELOADLY_CLIENT_ID },
-                    create: {
-                        scope,
-                        token_type,
-                        expires_in,
-                        access_token,
-                        type: 'RELOADLY',
-                        key: process.env.RELOADLY_CLIENT_ID,
-                    },
-                    update: {
-                        scope,
-                        token_type,
-                        expires_in,
-                        access_token,
-                    }
-                })
+            if (tokenExpired) {
+                access_token = await this.refreshAccessToken()
             }
 
             this.setAuthorizationHeader(access_token)

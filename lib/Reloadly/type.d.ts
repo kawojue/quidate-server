@@ -108,6 +108,11 @@ interface FxRate {
     recipientAmount: number
 }
 
+interface RedeemCode {
+    cardNumber: string
+    pinCode: string
+}
+
 interface ReloadlyResponse {
     scope: string
     expires_in: number

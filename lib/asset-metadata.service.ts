@@ -32,7 +32,7 @@ export class AssetMetadataService {
 
     private priceEndpoint = 'https://api.coingecko.com/api/v3/simple/price?ids=binancecoin%2Cethereum%2Cbitcoin%2Ctether&vs_currencies=usd%2Cngn&include_24hr_change=true'
 
-    private async fetchPrice() {
+    async fetchPrice() {
         try {
             const { data } = await axios.get(this.priceEndpoint, {
                 headers: {
@@ -160,18 +160,6 @@ export class AssetMetadataService {
         } catch (err) {
             console.error(err)
             return { usd: 0, ngn: 0 }
-        }
-    }
-
-    async fetchAndStoreP2PPriceConversion(): Promise<void> {
-        try {
-            await this.fetchPrice()
-        } catch (err) {
-            console.error(err)
-            throw new HttpException(
-                'Asset Metadata is down',
-                StatusCodes.InternalServerError,
-            )
         }
     }
 }

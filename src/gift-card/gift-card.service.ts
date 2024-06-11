@@ -211,7 +211,95 @@ export class GiftCardService {
             this.response.sendSuccess(res, StatusCodes.OK, { data: removeNullFields(tx) })
 
             res.on('finish', async () => {
-                // TODO: Email template
+                if (order) {
+                    const codes = await this.consumer.sendRequest<RedeemCode[]>('GET', `/orders/transactions/${order.product.productId}/cards`)
+
+                    if (codes?.length) {
+                        const redeem = await this.prisma.redeem.create({
+                            data: {
+                                txId: order.transactionId,
+                                user: { connect: { id: sub } },
+                                productId: order.product.productId,
+                                productName: order.product.productName,
+                            }
+                        })
+
+                        if (redeem) {
+                            for (const code of codes) {
+                                await this.prisma.redeemCode.create({
+                                    data: {
+                                        pinCode: code.pinCode,
+                                        cardNumber: code.cardNumber,
+                                        redeem: { connect: { id: redeem.id } }
+                                    }
+                                })
+                            }
+                        }
+
+                        await this.plunk.sendPlunkEmail({
+                            to: order.recipientEmail,
+                            subject: `Gift Card Purchase - Redeem Code`,
+                            body: `${order.product.productName}\n${order.product.productId}\n${order.transactionId}\n\n${codes.map((code) => (
+                                `<p>
+                                ${code.cardNumber}
+                                ${code.pinCode}
+                                </p>`
+                            ))}`
+                        })
+                        // TODO: Email template
+                    }
+                }
+            })
+        } catch (err) {
+            this.misc.handleServerError(res, err)
+        }
+    }
+
+    async fetchRedeemCodes(
+        res: Response,
+        { sub }: ExpressUser,
+        {
+            limit = 20, search = '', page = 1
+        }: InfiniteScrollDto
+    ) {
+        try {
+            page = Number(page)
+            limit = Number(limit)
+            const offset = (page - 1) * limit
+
+            const redeems = await this.prisma.redeem.findMany({
+                where: {
+                    userId: sub,
+                    OR: [
+                        { productName: { contains: search, mode: 'insensitive' } }
+                    ]
+                },
+                include: { codes: true },
+                take: limit,
+                skip: offset,
+            })
+
+            const total = await this.prisma.redeem.count({
+                where: {
+                    userId: sub,
+                    OR: [
+                        { productName: { contains: search, mode: 'insensitive' } }
+                    ]
+                }
+            })
+
+            const totalPages = Math.ceil(total / limit)
+            const hasNext = page < totalPages
+            const hasPrev = page > 1
+
+            this.response.sendSuccess(res, StatusCodes.OK, {
+                data: redeems,
+                metadata: {
+                    total,
+                    hasNext,
+                    hasPrev,
+                    currentPage: page
+                }
             })
         } catch (err) {
             this.misc.handleServerError(res, err)

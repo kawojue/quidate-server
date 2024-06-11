@@ -81,4 +81,13 @@ export class GiftCardController {
   ) {
     await this.giftCardService.purchaseGiftCard(res, req.user, productId, body)
   }
+
+  @Get('/redeems')
+  async redeemCode(
+    @Req() req: IRequest,
+    @Res() res: Response,
+    @Query() q: InfiniteScrollDto
+  ) {
+    await this.giftCardService.fetchRedeemCodes(res, req.user, q)
+  }
 }

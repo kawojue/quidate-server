@@ -24,6 +24,7 @@ model User {
     wallet                Wallet?
     profile               Profile?
     Address               Address?
+    redeems               Redeem[]
     logs                  Log[]
     kyc                   Kyc[]
     invoices              Invoice[]
@@ -476,6 +477,26 @@ model Invoice {
     createdAt     DateTime            @default(now())
     user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
     userId        String              @db.Uuid
+}
+
+model Redeem {
+    id          String       @id @default(uuid()) @db.Uuid
+    productId   Int
+    txId        Int
+    productName String
+    codes       RedeemCode[]
+    createdAt   DateTime     @default(now())
+    updatedAt   DateTime     @updatedAt
+    user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+    userId      String       @db.Uuid
+}
+
+model RedeemCode {
+    id         String @id @default(uuid()) @db.Uuid
+    pinCode    String
+    cardNumber String
+    redeem     Redeem @relation(fields: [redeemId], references: [id], onDelete: Cascade)
+    redeemId   String @db.Uuid
 }
 
 model Report {

@@ -20,9 +20,9 @@ export class TaskService {
         await this.threatIntelService.updateBlacklist()
     }
 
-    @Cron(CronExpression.EVERY_30_MINUTES)
+    @Cron(CronExpression.EVERY_HOUR)
     async handleAssetMetadata() {
-        await this.assetMetadata.fetchAndStoreP2PPriceConversion()
+        await this.assetMetadata.fetchPrice()
     }
 
     @Cron('0 0 * * *')

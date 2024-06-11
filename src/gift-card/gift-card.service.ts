@@ -304,6 +304,7 @@ export class GiftCardService {
                     total,
                     hasNext,
                     hasPrev,
+                    totalPages,
                     currentPage: page
                 }
             })

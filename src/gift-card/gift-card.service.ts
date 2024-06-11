@@ -212,38 +212,40 @@ export class GiftCardService {
 
             res.on('finish', async () => {
                 if (order) {
-                    const codes = await this.consumer.sendRequest<RedeemCode[]>('GET', `/orders/transactions/${order.product.productId}/cards`)
+                    const codes = await this.consumer.sendRequest<RedeemCode[]>('GET', `/orders/transactions/${order.transactionId}/cards`)
 
-                    if (codes?.length) {
-                        const redeem = await this.prisma.redeem.create({
-                            data: {
-                                txId: order.transactionId,
-                                user: { connect: { id: sub } },
-                                productId: order.product.productId,
-                                productName: order.product.productName,
-                            }
-                        })
+                    const redeem = await this.prisma.redeem.create({
+                        data: {
+                            txId: order.transactionId,
+                            user: { connect: { id: sub } },
+                            productId: order.product.productId,
+                            productName: order.product.productName,
+                        }
+                    })
 
-                        if (redeem) {
-                            for (const code of codes) {
-                                await this.prisma.redeemCode.create({
-                                    data: {
-                                        pinCode: code.pinCode,
-                                        cardNumber: code.cardNumber,
-                                        redeem: { connect: { id: redeem.id } }
-                                    }
-                                })
-                            }
+                    if (redeem) {
+                        for (const code of codes) {
+                            await this.prisma.redeemCode.create({
+                                data: {
+                                    pinCode: code.pinCode,
+                                    cardNumber: code.cardNumber,
+                                    redeem: { connect: { id: redeem.id } }
+                                }
+                            })
                         }
 
                         await this.plunk.sendPlunkEmail({
                             to: order.recipientEmail,
                             subject: `Gift Card Purchase - Redeem Code`,
                             body: `${order.product.productName}\n${order.product.productId}\n${order.transactionId}\n\n${codes.map((code) => (
-                                `<p>
-                                ${code.cardNumber}
-                                ${code.pinCode}
-                                </p>`
+                                `
+                                <p>
+                                    Card Number: ${code.cardNumber}
+                                </p>
+                                <p>
+                                    Pin Code: ${code.pinCode}
+                                </p>
+                                `
                             ))}`
                         })
                         // TODO: Email template

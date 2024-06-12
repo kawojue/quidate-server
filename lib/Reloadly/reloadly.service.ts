@@ -1,10 +1,12 @@
+import { Mutex } from 'async-mutex'
 import { PrismaService } from 'prisma/prisma.service'
-import axios, { AxiosInstance, AxiosResponse, Method } from 'axios'
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common'
+import axios, { AxiosInstance, AxiosResponse } from 'axios'
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common'
 
 @Injectable()
 export class Consumer {
     readonly axiosInstance: AxiosInstance
+    private readonly tokenMutex = new Mutex()
 
     constructor(baseURL: string, private readonly prisma: PrismaService) {
         this.axiosInstance = axios.create({
@@ -18,7 +20,10 @@ export class Consumer {
 
     private async getAccessToken() {
         return await this.prisma.cache.findFirst({
-            where: { type: 'RELOADLY' }
+            where: {
+                type: 'RELOADLY',
+                key: process.env.RELOADLY_CLIENT_ID
+            }
         })
     }
 
@@ -27,37 +32,47 @@ export class Consumer {
     }
 
     private async refreshAccessToken() {
-        const response: AxiosResponse<ReloadlyResponse> = await axios.post(
-            'https://auth.reloadly.com/oauth/token',
-            {
-                client_id: process.env.RELOADLY_CLIENT_ID,
-                client_secret: process.env.RELOADLY_CLIENT_SECRET,
-                grant_type: 'client_credentials',
-                audience: 'https://giftcards-sandbox.reloadly.com'
+        const release = await this.tokenMutex.acquire()
+        try {
+            let token = await this.getAccessToken()
+            if (token && Date.now() < (new Date(token.updatedAt).getTime() + token.expires_in * 1000)) {
+                return token.access_token
             }
-        )
 
-        const { expires_in, access_token: newAccessToken, token_type, scope } = response.data
+            const response: AxiosResponse<ReloadlyResponse> = await axios.post(
+                'https://auth.reloadly.com/oauth/token',
+                {
+                    grant_type: 'client_credentials',
+                    client_id: process.env.RELOADLY_CLIENT_ID,
+                    client_secret: process.env.RELOADLY_CLIENT_SECRET,
+                    audience: 'https://giftcards-sandbox.reloadly.com'
+                }
+            )
 
-        await this.prisma.cache.upsert({
-            where: { key: process.env.RELOADLY_CLIENT_ID },
-            create: {
-                scope,
-                token_type,
-                expires_in,
-                type: 'RELOADLY',
-                access_token: newAccessToken,
-                key: process.env.RELOADLY_CLIENT_ID,
-            },
-            update: {
-                scope,
-                token_type,
-                expires_in,
-                access_token: newAccessToken,
-            }
-        })
+            const { expires_in, access_token: newAccessToken, token_type, scope } = response.data
 
-        return newAccessToken
+            await this.prisma.cache.upsert({
+                where: { key: process.env.RELOADLY_CLIENT_ID },
+                create: {
+                    scope,
+                    token_type,
+                    expires_in,
+                    type: 'RELOADLY',
+                    access_token: newAccessToken,
+                    key: process.env.RELOADLY_CLIENT_ID,
+                },
+                update: {
+                    scope,
+                    token_type,
+                    expires_in,
+                    access_token: newAccessToken,
+                }
+            })
+
+            return newAccessToken
+        } finally {
+            release()
+        }
     }
 
     async sendRequest<T>(method: Method, url: string, data?: any): Promise<T> {
@@ -65,7 +80,7 @@ export class Consumer {
             let token = await this.getAccessToken()
             let access_token = token?.access_token
 
-            const tokenExpired = !access_token || (token?.expires_in && Date.now() > (new Date(token.updatedAt).getTime() + token.expires_in * 1000))
+            const tokenExpired = !access_token || (token?.expires_in && Date.now() > (new Date(token.updatedAt).getTime() + token.expires_in * 1000 - 60 * 1000))
 
             if (tokenExpired) {
                 access_token = await this.refreshAccessToken()
